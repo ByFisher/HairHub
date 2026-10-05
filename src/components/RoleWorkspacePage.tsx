@@ -4,6 +4,7 @@ import { AdminApprovalQueue } from "@/components/admin/AdminApprovalQueue";
 import { AdminDirectory } from "@/components/admin/AdminDirectory";
 import { AdminSliderManager } from "@/components/admin/AdminSliderManager";
 import { AdminStaffManager } from "@/components/admin/AdminStaffManager";
+import { AdminAuditLogsPanel } from "@/components/admin/AdminAuditLogsPanel";
 import { AccessLogsPanel } from "@/components/admin/AccessLogsPanel";
 import { CouponManager } from "@/components/admin/CouponManager";
 import { FinancialLogsPanel } from "@/components/admin/FinancialLogsPanel";
@@ -16,7 +17,8 @@ import { ShopProfilePanel } from "@/components/ShopProfilePanel";
 import { ShopServicesPanel } from "@/components/ShopServicesPanel";
 import { ShopStaffPanel } from "@/components/ShopStaffPanel";
 import { SponsorApprovalQueue } from "@/components/SponsorApprovalQueue";
-import { SponsorSupportForm } from "@/components/SponsorSupportForm";
+import { SponsorRequestsPanel } from "@/components/SponsorRequestsPanel";
+import { PortalOverviewPanel } from "@/components/PortalOverviewPanel";
 import { PAGE_DATA } from "@/data/portal";
 import type { PortalRole } from "@/types/portal";
 
@@ -30,6 +32,8 @@ export function RoleWorkspacePage({ role, slug }: { role: PortalRole; slug: stri
   }
 
   let livePanel: React.ReactNode = null;
+  if (role === "admin" && slug === "dashboard") livePanel = <PortalOverviewPanel role="admin" />;
+  if (role === "shop" && slug === "dashboard") livePanel = <PortalOverviewPanel role="shop" />;
   if (role === "admin" && slug === "users") livePanel = <AdminDirectory view="customers" />;
   if (role === "admin" && slug === "sliders") livePanel = <AdminSliderManager />;
   if (role === "admin" && slug === "shops") livePanel = <AdminDirectory view="shops" />;
@@ -41,6 +45,7 @@ export function RoleWorkspacePage({ role, slug }: { role: PortalRole; slug: stri
   if (role === "admin" && slug === "coupons") livePanel = <CouponManager admin />;
   if (role === "admin" && slug === "financial-logs") livePanel = <FinancialLogsPanel />;
   if (role === "admin" && slug === "legal-logs") livePanel = <AccessLogsPanel />;
+  if (role === "admin" && slug === "audit-logs") livePanel = <AdminAuditLogsPanel />;
   if (role === "admin" && slug === "review-moderation") livePanel = <AdminReviewQueue />;
   if (role === "admin" && slug === "support-requests") livePanel = <AdminSupportQueue />;
   if (role === "shop" && slug === "customers") livePanel = <ShopCustomersPanel />;
@@ -53,7 +58,7 @@ export function RoleWorkspacePage({ role, slug }: { role: PortalRole; slug: stri
   if (role === "shop" && (slug === "gallery" || slug === "reviews" || slug === "hours")) {
     livePanel = <ShopLiveModulesPanel section={slug} />;
   }
-  if (role === "sponsor" && slug === "support") livePanel = <SponsorSupportForm />;
+  if (role === "sponsor") livePanel = <SponsorRequestsPanel section={slug} />;
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-5">

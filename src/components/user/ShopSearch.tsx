@@ -89,31 +89,42 @@ function ShopSearchContent({
         <p className="mt-1 text-xs text-zinc-500">Onaylanmış dükkanlar; puan, konum ve hizmete göre filtrelenebilir.</p>
       </div>
 
-      <form onSubmit={applyFilters}>
-        <FormFieldset className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-4 sm:grid-cols-2 lg:grid-cols-6">
-        <FormField label="Berber / dükkan adı" description="İşletme adına göre arama yapın.">
-          <FormInput
-            value={draft.search}
-            onChange={(event) => setDraft({ ...draft, search: event.target.value })}
-            placeholder="Makas &amp; Sanat"
-          />
-        </FormField>
-        <Combobox label="İl" description="Şehre göre sonuçları filtreleyin." options={cities} value={draft.city} onChange={changeCity} placeholder="Tüm İller" searchPlaceholder="İl ara..." />
-        <Combobox label="İlçe" description="Seçilen ildeki ilçeyi belirleyin." options={districts} value={draft.district} onChange={changeDistrict} placeholder={draft.city ? "Tüm İlçeler" : "Önce il seçin"} searchPlaceholder="İlçe ara..." disabled={!draft.city} />
-        <Combobox label="Hizmet" description="Sunulan hizmete göre sonuçları daraltın." options={services} value={draft.service} onChange={(val) => setDraft({ ...draft, service: val })} placeholder="Tüm Hizmetler" searchPlaceholder="Hizmet ara..." />
-        <FormListbox
-          label="Min. puan"
-          description="Gösterilecek salonlar için en düşük puanı seçin."
-          value={draft.minRating}
-          onChange={(minRating) => setDraft((current) => ({ ...current, minRating }))}
-          placeholder="Tümü"
-          options={[{ value: "4", label: "4+" }, { value: "4.5", label: "4.5+" }, { value: "5", label: "5" }]}
-        />
-        <div className="flex items-end">
-          <button type="submit" className="h-9 w-full rounded bg-zinc-100 text-xs font-medium text-zinc-950 hover:bg-white">
-            Filtrele
-          </button>
-        </div>
+      <form onSubmit={applyFilters} className="w-full">
+        <FormFieldset className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+            <FormField label="Berber / dükkan adı" description="İşletme adına göre arama yapın.">
+              <FormInput
+                value={draft.search}
+                onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+                placeholder="Makas &amp; Sanat"
+                className="w-full"
+              />
+            </FormField>
+          </div>
+          <div className="min-w-0">
+            <Combobox label="İl" description="Şehre göre sonuçları filtreleyin." options={cities} value={draft.city} onChange={changeCity} placeholder="Tüm İller" searchPlaceholder="İl ara..." />
+          </div>
+          <div className="min-w-0">
+            <Combobox label="İlçe" description="Seçilen ildeki ilçeyi belirleyin." options={districts} value={draft.district} onChange={changeDistrict} placeholder={draft.city ? "Tüm İlçeler" : "Önce il seçin"} searchPlaceholder="İlçe ara..." disabled={!draft.city} />
+          </div>
+          <div className="min-w-0">
+            <Combobox label="Hizmet" description="Sunulan hizmete göre sonuçları daraltın." options={services} value={draft.service} onChange={(val) => setDraft({ ...draft, service: val })} placeholder="Tüm Hizmetler" searchPlaceholder="Hizmet ara..." />
+          </div>
+          <div className="min-w-0">
+            <FormListbox
+              label="Min. puan"
+              description="Gösterilecek salonlar için en düşük puanı seçin."
+              value={draft.minRating}
+              onChange={(minRating) => setDraft((current) => ({ ...current, minRating }))}
+              placeholder="Tümü"
+              options={[{ value: "4", label: "4+" }, { value: "4.5", label: "4.5+" }, { value: "5", label: "5" }]}
+            />
+          </div>
+          <div className="flex items-end min-w-0">
+            <button type="submit" className="h-9 w-full rounded bg-zinc-100 text-xs font-medium text-zinc-950 transition hover:bg-white">
+              Filtrele
+            </button>
+          </div>
         </FormFieldset>
       </form>
 
@@ -121,11 +132,13 @@ function ShopSearchContent({
         <p role="alert" className="text-xs text-rose-300">{authError || citiesError || districtsError}</p>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-zinc-500">
           {isLoading ? "Yükleniyor…" : `${data?.length ?? 0} dükkan listelendi`}
         </p>
-        <FormListbox<ShopSort> label="Sıralama" description="Sonuçların sıralama ölçütünü seçin." value={sort ?? "rating_desc"} onChange={(value) => setSort(value || "rating_desc")} options={SORT_OPTIONS} className="flex items-center gap-2 text-xs text-zinc-500" />
+        <div className="w-full sm:max-w-[235px]">
+          <FormListbox<ShopSort> label="Sıralama" description="Sonuçların sıralama ölçütünü seçin." value={sort ?? "rating_desc"} onChange={(value) => setSort(value || "rating_desc")} options={SORT_OPTIONS} className="flex items-center gap-2 text-xs text-zinc-500" />
+        </div>
       </div>
 
       <ErrorAlert message={error} onRetry={refresh} />

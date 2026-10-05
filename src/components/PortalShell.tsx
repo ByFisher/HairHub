@@ -8,11 +8,9 @@ import {
   Command,
   Menu,
   Megaphone,
-  Moon,
   Search,
   Scissors,
   Store,
-  Sun,
   X,
 } from "lucide-react";
 import { NAVIGATION, PORTAL_HOME, PORTAL_ROLE_LABEL } from "@/data/portal";
@@ -24,6 +22,7 @@ import { BrandLoading, BrandLogo } from "@/components/BrandLogo";
 import { UserDropdown } from "@/components/header/user-dropdown";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { FormField, FormFieldset, FormInput } from "@/components/ui/form";
+import { ThemeToggle } from "@/components/providers/theme-provider";
 
 function PortalShellContent({ children, role }: { children: React.ReactNode; role: PortalRole }) {
   const pathname = usePathname();
@@ -33,7 +32,6 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const navGroups = useMemo(() => NAVIGATION[role]
     .map((group) => ({
       ...group,
@@ -67,10 +65,6 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
     });
     return () => { active = false; };
   }, [role, router]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
-  }, [theme]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -112,7 +106,7 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
   if (!user) return <BrandLoading label="Oturum doğrulanıyor..." />;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#09090b] text-zinc-100">
+    <div className="portal-theme flex h-dvh overflow-hidden bg-[#09090b] text-zinc-100">
       {menuOpen && <button type="button" aria-label="Menüyü kapat" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/60 md:hidden" />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-800 bg-zinc-950 transition-transform md:static md:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
@@ -164,7 +158,7 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
               {role === "shop" ? <Store size={14} className="shrink-0" /> : role === "sponsor" ? <Megaphone size={14} /> : <Scissors size={14} />}
               {roleLabel}
             </span>
-            <button type="button" aria-label="Temayı değiştir" onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")} className="rounded-md p-2 text-zinc-400 hover:bg-zinc-900">{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}</button>
+            <ThemeToggle className="size-9 rounded-md border-zinc-800 text-zinc-400 hover:bg-zinc-900" />
             <UserDropdown user={user} onUserUpdated={setUser} onSignOut={() => void signOut()} showCustomerLinks={false} />
           </div>
         </header>

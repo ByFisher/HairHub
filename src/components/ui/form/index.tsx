@@ -131,7 +131,7 @@ export function FormListbox<T extends string | number>({
   value,
   onChange,
   options,
-  placeholder = "Seçiniz",
+  placeholder = "Tümü",
   clearable = true,
   className = "",
 }: {

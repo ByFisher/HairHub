@@ -95,7 +95,7 @@ async function ensureCsrfCookie() {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(
-      "Laravel CSRF oturumu başlatılamadı. API bağlantısı, CORS ayarları veya Laravel session tablosu kontrol edilmeli (php artisan migrate).",
+      "Laravel CSRF oturumu başlatılamadı. Laravel API'nin çalıştığını ve NEXT_PUBLIC_API_URL adresinden erişilebildiğini doğrulayın. API çalışıyorsa CORS ve Sanctum stateful domain ayarlarını kontrol edin.",
       0,
     );
   }

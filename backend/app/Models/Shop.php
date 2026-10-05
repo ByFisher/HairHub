@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'owner_user_id', 'slug', 'name', 'description', 'status', 'is_approved', 'city', 'district',
-    'street', 'phone', 'cover_image_url', 'profile_image_url', 'working_hours', 'commission_rate',
+    'street', 'phone', 'cover_image_url', 'profile_image_url', 'working_hours', 'commission_rate', 'gender_type',
 ])]
 class Shop extends Model
 {

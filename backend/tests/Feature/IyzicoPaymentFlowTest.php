@@ -107,7 +107,7 @@ class IyzicoPaymentFlowTest extends TestCase
         ]);
 
         $this->postJson('/api/v1/payments/iyzico/callback', ['token' => 'iyzico-checkout-token'])
-            ->assertRedirect('http://localhost:3000/my-appointments?payment=success');
+            ->assertRedirect("http://localhost:3000/my-appointments/{$appointment->id}?payment=success");
 
         $this->assertDatabaseHas('appointment_payments', [
             'id' => $payment->id,
@@ -151,7 +151,7 @@ class IyzicoPaymentFlowTest extends TestCase
             ->andReturn('iyzico-refund-reference');
 
         $this->postJson('/api/v1/payments/iyzico/callback', ['token' => 'iyzico-checkout-token'])
-            ->assertRedirect('http://localhost:3000/my-appointments?payment=refunded');
+            ->assertRedirect("http://localhost:3000/my-appointments/{$appointment->id}?payment=refunded");
 
         $this->assertDatabaseHas('appointment_payments', [
             'id' => $payment->id,

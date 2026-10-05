@@ -54,6 +54,7 @@ Frontend `ApiError` sınıfına dönüştürür: `status === 0` → bağlantı y
 
 | Metot | Yol | Açıklama |
 |---|---|---|
+| GET | `/admin/overview` | `admin.dashboard.view` yetkili roller için kişisel veri içermeyen canlı müşteri, dükkan, randevu ve içerik-onay sayaçları |
 | GET | `/admin/sliders` | Tüm bannerlar sıralı; yalnızca `super_admin` |
 | POST | `/admin/sliders` | Multipart: `title`, `image` (JPG/PNG/WebP, en fazla 5 MB), `is_active`, isteğe bağlı `description`, `link_url`, `link_label`, `sort_order` |
 | PATCH | `/admin/sliders/{id}` | Banner metni, görseli, yönlendirmesi ve aktifliği günceller |
@@ -69,6 +70,7 @@ Frontend `ApiError` sınıfına dönüştürür: `status === 0` → bağlantı y
 | PATCH | `/admin/approvals/{id}/approve` | `204` veya `AdminApproval` |
 | PATCH | `/admin/approvals/{id}/reject` | `{ rejection_reason: string }` → `AdminApproval` |
 | PATCH | `/admin/shops/{id}/status` | `{ status: "active" \| "suspended" }` → Shop; aktif etme sahibi `approved`, askıya alma sahibi `suspended` yapar |
+| GET | `/admin/audit-logs` | `?action=&subject_id=&from=&to=&page=&per_page=` → audit kayıtları; yalnızca `super_admin` |
 
 Middleware: `auth:sanctum` + yetkili hesap + `role:super_admin`. Shop owner API'leri yalnızca `active` veya admin onayıyla `approved` hesapları kabul eder.
 İçerik kararları ve hesap/dükkan durum değişiklikleri transaction ve `audit_logs` kaydıyla uygulanır.
@@ -83,6 +85,7 @@ Yönlendirme yalnızca site içi `/path` veya HTTP(S) URL olabilir. Slider görs
 
 | Metot | Yol | Açıklama |
 |---|---|---|
+| GET | `/shop/overview` | Oturum sahibinin aktif dükkanı için gerçek randevu, müşteri, personel ve hizmet sayaçları |
 | GET | `/shop/profile` | Oturum sahibinin dükkan profili |
 | GET / POST | `/shop/services` | Yalnızca oturum sahibinin dükkanına ait hizmetler |
 | PATCH | `/shop/services/{id}` | Dükkan kapsamlı hizmet güncellemesi |
@@ -104,9 +107,10 @@ tamamı Sanctum oturumu ve `customer` rolü gerektirir. Müşteri menüsü ancak
 
 | Metot | Yol | Açıklama |
 |---|---|---|
-| GET | `/shops` | `?search=&city=&district=&service=&min_rating=&sort=rating_desc\|rating_asc\|name_asc\|reviews_desc&page=&per_page=` → `Shop[]` (yalnızca `status=active` ve onaylı görseller) |
-| GET | `/shops/{id}` | `Shop` (çalışma saatleri, adres, puan) |
-| GET | `/shops/{id}/services` | `?is_active=true` → `Service[]` |
+| GET | `/shops` | `?search=&city=&district=&service=&gender=male\|female&min_rating=&sort=rating_desc\|rating_asc\|name_asc\|reviews_desc&page=&per_page=` → `Shop[]` (yalnızca `status=active` ve onaylı görseller; `gender` verilirse eşleşen ve `unisex` işletmeler/hizmetler) |
+| GET | `/shops/meta/services` | `?gender=male\|female` → o moda uygun benzersiz hizmet adları |
+| GET | `/shops/{id}` | `Shop` (çalışma saatleri, adres, puan, `genderType`) |
+| GET | `/shops/{id}/services` | `?gender=male\|female` → eşleşen ve `unisex` `Service[]` |
 | GET | `/shops/{id}/staff` | `Staff[]` — `approvalStatus=approved` ve `isApproved=true` olanlar |
 | GET | `/shops/{id}/staff/{staffId}` | `Staff` (hizmet listesi dahil) |
 | GET | `/shops/{id}/staff/{staffId}/reviews` | `StaffReview[]` (paging) |
@@ -118,6 +122,8 @@ tamamı Sanctum oturumu ve `customer` rolü gerektirir. Müşteri menüsü ancak
 | POST | `/appointments/{id}/demo-pay` | Yalnızca `PAYMENT_DEMO_ENABLED=true` olduğunda, müşterinin kendi randevusuna demo tahsilat yapar |
 | POST | `/appointments/{id}/review` | `{ rating: 1..5, comment? }` → `StaffReview` |
 | GET | `/me` | Oturumdaki kullanıcının `User` profili |
+
+İşletme `gender_type` ve hizmet `target_gender` alanları `male`, `female` veya `unisex` değerlerini alır. Geriye dönük uyumluluk için mevcut ve yeni kayıtların varsayılanı `unisex`'tir. `gender` parametresi verilmediğinde mevcut listeleme davranışı korunur; `male`/`female` filtreleri seçilen değere ek olarak `unisex` kayıtları da döndürür. Kategori bilgisi şu an `shop_services.category` metin alanında tutulur; ayrı bir kategori tablosu olmadığı için bu migration hizmet hedeflemesini hizmet kaydında tanımlar.
 
 ### Dükkan randevuları ve iptali
 
@@ -151,8 +157,9 @@ Randevu yanıtındaki `payment` nesnesi `provider`, `status` (`unpaid`, `pending
 | Metot | Yol | Açıklama |
 |---|---|---|
 | POST | `/sponsor/approval-requests` | Sponsor rolüyle reklam/bütçe/hedefleme/destek talebi oluşturma |
+| GET | `/sponsor/approval-requests` | Yalnızca oturumdaki sponsorun kendi talepleri ve durumları |
 | GET | `/admin/sponsor-approval-requests` | Süper Admin onay kuyruğu |
 | POST | `/admin/sponsor-approval-requests/{id}/approve` | Talebi onaylama ve audit kaydı |
 | POST | `/admin/sponsor-approval-requests/{id}/reject` | Talebi reddetme ve audit kaydı |
 
-Demo ödeme yalnızca randevu tahsilat/iade akışını yerel ortamda sınar; analitik, kampanya yayınlama ve diğer henüz modellenmemiş ekranlarda sahte değer gösterilmez.
+Sponsor kampanya/bütçe/hedefleme formları onay talebi oluşturur; tek başına kampanya yayınlamaz. Demo ödeme yalnızca randevu tahsilat/iade akışını yerel ortamda sınar. Sponsor gösterim/tıklama analitiği, faturalama, banka transferi/hakediş yürütmesi ve değiştirilebilir sistem ayarları için veri modeli ve/veya harici sağlayıcı bağlantısı gerekir; bu modüller için sahte değer veya başarılı para transferi gösterilmez.

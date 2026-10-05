@@ -93,25 +93,32 @@ function LandingDiscoveryContent({
     <section id="salonlari-kesfet" className="mx-auto w-full max-w-7xl scroll-mt-6 px-5 pb-20 sm:px-8 lg:px-12">
       <div className="mb-6">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-300">Sana yakın bakım</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Salonları keşfet</h2>
+        <h2 className="landing-discovery-title mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Salonları keşfet</h2>
         <p className="mt-2 text-sm text-zinc-500">Konumuna uygun berber ve kuaförleri, hizmetlerini ve fiyatlarını karşılaştır.</p>
       </div>
 
-      <form onSubmit={applySearch}>
-        <FormFieldset className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-2xl shadow-black/20 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.3fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(170px,0.9fr)_auto]">
-        <FormField label="Dükkan veya berber" description="İşletme adıyla salon arayın." className="justify-center">
+      <form onSubmit={applySearch} className="w-full">
+        <FormFieldset className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-2xl shadow-black/20 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(170px,0.9fr)_auto]">
+          <FormField label="Dükkan veya berber" description="İşletme adıyla salon arayın." className="justify-center sm:col-span-2 xl:col-span-1">
             <FormInput
               value={draft.search}
               onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
               placeholder="İşletme adı ara"
+              className="w-full"
             />
-        </FormField>
-        <Combobox label="İl" description="İl seçerek sonuçları daraltın." options={cities} value={draft.city} onChange={changeCity} placeholder="Tüm iller" searchPlaceholder="İl ara..." />
-        <Combobox label="İlçe" description="Seçilen il içindeki ilçelerden birini seçin." options={districts} value={draft.district} onChange={changeDistrict} placeholder={draft.city ? "Tüm ilçeler" : "Önce il seçin"} searchPlaceholder="İlçe ara..." disabled={!draft.city} />
-        <Combobox label="Hizmet" description="Sunulan hizmete göre salon arayın." options={services} value={draft.service} onChange={(service) => setDraft((current) => ({ ...current, service }))} placeholder="Tüm hizmetler" searchPlaceholder="Hizmet ara..." />
-        <button type="submit" className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200">
-          <Search size={14} /> Salon bul
-        </button>
+          </FormField>
+          <div className="min-w-0">
+            <Combobox label="İl" description="İl seçerek sonuçları daraltın." options={cities} value={draft.city} onChange={changeCity} placeholder="Tüm iller" searchPlaceholder="İl ara..." />
+          </div>
+          <div className="min-w-0">
+            <Combobox label="İlçe" description="Seçilen il içindeki ilçelerden birini seçin." options={districts} value={draft.district} onChange={changeDistrict} placeholder={draft.city ? "Tüm ilçeler" : "Önce il seçin"} searchPlaceholder="İlçe ara..." disabled={!draft.city} />
+          </div>
+          <div className="min-w-0">
+            <Combobox label="Hizmet" description="Sunulan hizmete göre salon arayın." options={services} value={draft.service} onChange={(service) => setDraft((current) => ({ ...current, service }))} placeholder="Tüm hizmetler" searchPlaceholder="Hizmet ara..." />
+          </div>
+          <button type="submit" className="mt-auto inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-white px-5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200 sm:w-auto xl:min-w-[120px]">
+            <Search size={14} /> Salon bul
+          </button>
         </FormFieldset>
       </form>
 
@@ -124,7 +131,8 @@ function LandingDiscoveryContent({
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
             <SlidersHorizontal size={14} className="text-zinc-200" /> Hızlı filtreler
           </div>
-          <FormFieldset>
+
+          <div className="space-y-3">
             <FormListbox
               label="En düşük puan"
               description="Sonuçları en düşük puan eşiğine göre filtreleyin."
@@ -132,18 +140,25 @@ function LandingDiscoveryContent({
               onChange={setMinimumRating}
               placeholder="Tüm puanlar"
               options={[
-                { value: "4", label: "4+ yıldız" },
-                { value: "4.5", label: "4.5+ yıldız" },
+                { value: "1", label: "1.0 ve üzeri" },
+                { value: "2", label: "2.0 ve üzeri" },
+                { value: "3", label: "3.0 ve üzeri" },
+                { value: "4", label: "4.0 ve üzeri" },
+                { value: "5", label: "5.0" },
               ]}
             />
-          </FormFieldset>
+          </div>
+
           <FormFieldset className="space-y-2">
             <p className="text-[11px] font-medium text-zinc-400">Hizmet türleri</p>
-            {services.slice(0, 10).map((service) => (
-              <FormCheckboxField key={service} label={service} description="Bu hizmeti sunan salonları gösterin." checked={draft.service === service} onChange={() => toggleService(service)} />
-            ))}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              {services.slice(0, 10).map((service) => (
+                <FormCheckboxField key={service} label={service} description="Bu hizmeti sunan salonları gösterin." checked={draft.service === service} onChange={() => toggleService(service)} />
+              ))}
+            </div>
             {services.length === 0 && !servicesError && <p className="text-[11px] text-zinc-600">Henüz hizmet bulunmuyor.</p>}
           </FormFieldset>
+
           {(draft.city || draft.district || draft.service || draft.minRating) && (
             <button
               type="button"
@@ -151,7 +166,7 @@ function LandingDiscoveryContent({
                 setDraft({ search: "", city: "", district: "", service: "", minRating: "" });
                 setFilters({ perPage: 24, sort: "rating_desc" });
               }}
-              className="text-[11px] text-zinc-200 hover:text-white"
+              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-[11px] text-zinc-200 transition hover:border-zinc-700 hover:text-white"
             >
               Filtreleri temizle
             </button>
@@ -166,19 +181,21 @@ function LandingDiscoveryContent({
                 {shops.isLoading ? "Salonlar yükleniyor..." : `${shops.data?.length ?? 0} salon listeleniyor`}
               </p>
             </div>
-            <FormListbox
-              label="Sırala"
-              description="Salon listesinin sıralama ölçütünü seçin."
-              value={filters.sort ?? "rating_desc"}
-              onChange={(sort) => setFilters((current) => ({ ...current, sort: sort || undefined, page: 1 }))}
-              options={[
-                { value: "rating_desc", label: "Puanı yüksek" },
-                { value: "reviews_desc", label: "En çok yorum" },
-                { value: "name_asc", label: "İsme göre" },
-                { value: "rating_asc", label: "Puanı düşük" },
-              ]}
-              className="flex items-center gap-2 text-[11px] text-zinc-500"
-            />
+            <div className="w-full sm:w-auto">
+              <FormListbox
+                label="Sırala"
+                description="Salon listesinin sıralama ölçütünü seçin."
+                value={filters.sort ?? "rating_desc"}
+                onChange={(sort) => setFilters((current) => ({ ...current, sort: sort || undefined, page: 1 }))}
+                options={[
+                  { value: "rating_desc", label: "Puanı yüksek" },
+                  { value: "reviews_desc", label: "En çok yorum" },
+                  { value: "name_asc", label: "İsme göre" },
+                  { value: "rating_asc", label: "Puanı düşük" },
+                ]}
+                className="flex items-center gap-2 text-[11px] text-zinc-500"
+              />
+            </div>
           </div>
           <ShopGrid shops={shops.data ?? []} isLoading={shops.isLoading} />
         </div>

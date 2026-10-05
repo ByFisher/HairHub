@@ -44,7 +44,7 @@ export function DemoIyzicoCheckout({ appointmentId }: { appointmentId: string })
     setCardNumber("");
     setExpiry("");
     setCvc("");
-    router.replace("/my-appointments?payment=demo-success");
+    router.replace(`/my-appointments/${encodeURIComponent(appointmentId)}?payment=demo-success`);
   };
 
   const visit = appointment.data;

@@ -90,7 +90,7 @@ export function ShopCard({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 text-[11px] text-zinc-500">
-            <span className="inline-flex min-w-0 items-center gap-1.5">
+            <span className="inline-flex min-w-0 max-w-[60%] items-center gap-1.5">
               <MapPin size={12} className="shrink-0 text-zinc-300" />
               <span className="truncate">{shop.address.district.city.name}, {shop.address.district.name}</span>
             </span>
@@ -100,26 +100,22 @@ export function ShopCard({
             </span>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] text-zinc-500">
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <p className="min-w-0 text-[11px] text-zinc-500">
               {shop.minimumServicePrice !== null && shop.minimumServicePrice !== undefined
                 ? <>Başlangıç: <span className="font-medium text-zinc-200">{shop.minimumServicePrice.toLocaleString("tr-TR")} ₺</span></>
                 : "Fiyat bilgisi yok"}
             </p>
-            <span className="text-[10px] text-zinc-600">Detayları gör →</span>
+            <button
+              type="button"
+              disabled={status === "loading"}
+              onClick={startBooking}
+              className="shrink-0 rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
+            >
+              Randevu al
+            </button>
           </div>
         </div>
-      </div>
-
-      <div className="pointer-events-auto absolute bottom-3 right-3 z-10">
-        <button
-          type="button"
-          disabled={status === "loading"}
-          onClick={startBooking}
-          className="rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
-        >
-          Randevu al
-        </button>
       </div>
     </article>
   );

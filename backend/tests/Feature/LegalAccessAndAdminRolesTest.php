@@ -143,6 +143,37 @@ class LegalAccessAndAdminRolesTest extends TestCase
         $this->assertDatabaseHas('sponsor_approval_requests', ['id' => $campaignRequest->id, 'status' => 'pending_approval']);
     }
 
+    public function test_sponsors_can_only_read_their_own_approval_requests(): void
+    {
+        $sponsor = $this->user('sponsor');
+        $otherSponsor = $this->user('sponsor');
+        $ownRequest = SponsorApprovalRequest::query()->create([
+            'sponsor_user_id' => $sponsor->id,
+            'kind' => 'campaign',
+            'title' => 'Yerel kampanya',
+            'details' => 'İzmir bölgesinde görünürlük talebi.',
+        ]);
+        SponsorApprovalRequest::query()->create([
+            'sponsor_user_id' => $otherSponsor->id,
+            'kind' => 'budget',
+            'title' => 'Başka sponsor bütçesi',
+            'details' => 'Bu kayıt diğer sponsora ait.',
+        ]);
+        $created = $this->actingAs($sponsor)->postJson('/api/v1/sponsor/approval-requests', [
+            'kind' => 'targeting',
+            'title' => 'Kadıköy hedefleme',
+            'details' => 'Kadıköy bölgesinde görünürlük talebi.',
+        ])->assertCreated()
+            ->assertJsonPath('status', 'Onay Bekliyor');
+
+        $this->actingAs($sponsor)->getJson('/api/v1/sponsor/approval-requests')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonFragment(['id' => (string) $ownRequest->id, 'title' => 'Yerel kampanya'])
+            ->assertJsonFragment(['id' => $created->json('id'), 'title' => 'Kadıköy hedefleme']);
+        $this->actingAs($this->user('admin'))->getJson('/api/v1/sponsor/approval-requests')->assertForbidden();
+    }
+
     public function test_only_super_admin_can_export_logs_and_csv_cells_are_formula_safe(): void
     {
         $log = AccessLog::query()->create([

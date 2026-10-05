@@ -171,12 +171,25 @@ export function CheckoutFlow({
       return;
     }
 
-    router.push("/my-appointments?created=1");
+    router.push(`/my-appointments/${encodeURIComponent(appointment.id)}?created=1`);
   };
 
   const isSubmitting = createAppointment.isPending || startCheckout.isPending;
   const canComplete = paymentMethod !== "card"
     || (identityNumber.length === 11 && registrationAddress.trim().length >= 5);
+  const completionHint = !selectedServices.length
+    ? "Sepete en az bir hizmet ekleyin."
+    : !selectedStaff
+      ? "Randevuyu oluşturmak için önce onaylı personel seçin."
+      : !startsAt || !selectedSlotIsAvailable
+        ? "Seçtiğiniz tarih için uygun bir saat seçin."
+        : !preInformationAccepted || !distanceSalesAccepted
+          ? "Devam etmek için iki sözleşme onayını da işaretleyin."
+          : paymentMethod === "card" && identityNumber.length !== 11
+            ? "Kartla ödeme için 11 haneli T.C. kimlik numaranızı girin."
+            : paymentMethod === "card" && registrationAddress.trim().length < 5
+              ? "Kartla ödeme için fatura adresinizi girin."
+              : "";
 
   if (hasInvalidSelection) {
     return (
@@ -495,6 +508,11 @@ export function CheckoutFlow({
                       ? "Ödemeyi tamamla ve randevuyu onayla"
                       : "Randevuyu oluştur"}
               </button>
+              {!createdAppointment && completionHint && (
+                <p role="status" aria-live="polite" className="text-center text-[11px] leading-relaxed text-zinc-500">
+                  {completionHint}
+                </p>
+              )}
               <p className="text-center text-[11px] leading-relaxed text-zinc-600">
                 Kupon ve toplam tutar randevu oluşturulurken sunucuda yeniden doğrulanır.
               </p>

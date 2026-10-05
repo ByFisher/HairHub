@@ -177,6 +177,51 @@ class PortalApiTest extends TestCase
             ->assertJsonPath('0.shop.name', $shop->name);
     }
 
+    public function test_customers_can_read_only_their_own_appointment_details(): void
+    {
+        $customer = $this->user('customer', 'Appointment Customer', 'appointment-customer@example.test');
+        $otherCustomer = $this->user('customer', 'Other Customer', 'other-customer@example.test');
+        $owner = $this->user('shop_owner', 'Appointment Shop Owner', 'appointment-owner@example.test');
+        $shop = $this->shop($owner, 'appointment-detail-shop');
+        $shop->update(['is_approved' => true]);
+        $staff = ShopStaff::query()->create([
+            'shop_id' => $shop->id,
+            'first_name' => 'Ali',
+            'last_name' => 'Usta',
+            'title' => 'Berber',
+            'approval_status' => 'approved',
+        ]);
+        $service = ShopService::query()->create([
+            'shop_id' => $shop->id,
+            'name' => 'Saç kesimi',
+            'duration_minutes' => 30,
+            'price' => 500,
+        ]);
+        $appointment = $customer->appointments()->create([
+            'shop_id' => $shop->id,
+            'staff_id' => $staff->id,
+            'service_id' => $service->id,
+            'starts_at' => now()->addDay(),
+            'ends_at' => now()->addDay()->addMinutes(30),
+            'status' => 'pending',
+            'total_price' => 500,
+        ]);
+        $appointment->services()->attach($service->id, [
+            'service_name' => $service->name,
+            'duration_minutes' => $service->duration_minutes,
+            'price' => $service->price,
+            'sort_order' => 0,
+        ]);
+
+        $this->actingAs($customer)->getJson("/api/v1/appointments/{$appointment->id}")
+            ->assertOk()
+            ->assertJsonPath('id', (string) $appointment->id)
+            ->assertJsonPath('shop.name', $shop->name)
+            ->assertJsonPath('services.0.name', $service->name);
+        $this->actingAs($otherCustomer)->getJson("/api/v1/appointments/{$appointment->id}")->assertNotFound();
+        $this->actingAs($owner)->getJson("/api/v1/appointments/{$appointment->id}")->assertForbidden();
+    }
+
     public function test_public_registration_creates_a_customer_and_authenticates_the_session(): void
     {
         $this->withHeaders([

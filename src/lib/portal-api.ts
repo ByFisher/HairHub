@@ -73,6 +73,10 @@ export function submitSponsorApprovalRequest(input: SponsorApprovalInput): Promi
   return post<SponsorApprovalRequest>("/sponsor/approval-requests", input);
 }
 
+export function getSponsorApprovalRequests(): Promise<SponsorApprovalRequest[]> {
+  return requestList<SponsorApprovalRequest>("/sponsor/approval-requests");
+}
+
 export function getSponsorApprovalQueue(): Promise<SponsorApprovalRequest[]> {
   return requestList<SponsorApprovalRequest>("/admin/sponsor-approval-requests");
 }

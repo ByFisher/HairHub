@@ -21,14 +21,19 @@ class PublicShopController extends Controller
             'city' => ['nullable', 'string', 'max:120'],
             'district' => ['nullable', 'string', 'max:120'],
             'service' => ['nullable', 'string', 'max:120'],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
             'min_rating' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'sort' => ['nullable', 'in:rating_desc,rating_asc,name_asc,reviews_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
         $sort = $filters['sort'] ?? 'rating_desc';
+        $serviceGenders = isset($filters['gender']) ? [$filters['gender'], 'unisex'] : null;
         $shops = Shop::query()->where('status', 'active')->where('is_approved', true)
+            ->when(isset($filters['gender']), fn ($query) => $query->whereIn('gender_type', [$filters['gender'], 'unisex']))
             ->with([
-                'services' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
+                'services' => fn ($query) => $query->where('is_active', true)
+                    ->when($serviceGenders, fn ($services) => $services->whereIn('target_gender', $serviceGenders))
+                    ->orderBy('sort_order'),
                 'staff' => fn ($query) => $query->where('approval_status', 'approved')
                     ->withAvg('reviews', 'rating')->withCount('reviews'),
             ])
@@ -37,6 +42,7 @@ class PublicShopController extends Controller
             ->when(isset($filters['district']), fn ($query) => $query->where('district', $filters['district']))
             ->when($request->filled('service'), function ($query) use ($request): void {
                 $query->whereHas('services', fn ($services) => $services->where('is_active', true)
+                    ->when($request->filled('gender'), fn ($services) => $services->whereIn('target_gender', [$request->string('gender')->value(), 'unisex']))
                     ->where('name', 'like', '%'.$request->string('service').'%'));
             })
             ->when($request->filled('min_rating'), function ($query) use ($request): void {
@@ -87,11 +93,16 @@ class PublicShopController extends Controller
         return response()->json($this->shopData($shop));
     }
 
-    public function services(Shop $shop)
+    public function services(Request $request, Shop $shop)
     {
         abort_unless($shop->status === 'active' && $shop->is_approved, 404);
+        $filters = $request->validate([
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+        ]);
 
-        return response()->json($shop->services()->where('is_active', true)->orderBy('sort_order')->get()
+        return response()->json($shop->services()->where('is_active', true)
+            ->when(isset($filters['gender']), fn ($query) => $query->whereIn('target_gender', [$filters['gender'], 'unisex']))
+            ->orderBy('sort_order')->get()
             ->map(fn (ShopService $service) => $this->serviceData($service)));
     }
 
@@ -200,10 +211,14 @@ class PublicShopController extends Controller
         return response()->json($locations->districts($data['city']));
     }
 
-    public function distinctServices()
+    public function distinctServices(Request $request)
     {
+        $filters = $request->validate([
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+        ]);
         $services = ShopService::query()
             ->where('is_active', true)
+            ->when(isset($filters['gender']), fn ($query) => $query->whereIn('target_gender', [$filters['gender'], 'unisex']))
             ->whereHas('shop', function ($query) {
                 $query->where('status', 'active')
                     ->where('is_approved', true);
@@ -231,6 +246,7 @@ class PublicShopController extends Controller
             'slug' => $shop->slug,
             'name' => $shop->name,
             'description' => $shop->description,
+            'genderType' => $shop->gender_type,
             'status' => $shop->status,
             'isApproved' => $shop->is_approved,
             'coverImageUrl' => $shop->cover_image_url,
@@ -272,6 +288,7 @@ class PublicShopController extends Controller
             'shopId' => (string) $service->shop_id,
             'name' => $service->name,
             'category' => $service->category,
+            'targetGender' => $service->target_gender,
             'description' => $service->description,
             'durationMinutes' => $service->duration_minutes,
             'price' => $service->price,

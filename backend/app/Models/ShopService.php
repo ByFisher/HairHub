@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['shop_id', 'name', 'category', 'description', 'duration_minutes', 'price', 'is_active', 'sort_order'])]
+#[Fillable(['shop_id', 'name', 'category', 'description', 'duration_minutes', 'price', 'is_active', 'sort_order', 'target_gender'])]
 class ShopService extends Model
 {
     protected function casts(): array

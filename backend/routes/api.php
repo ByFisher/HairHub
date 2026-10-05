@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccessLogController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminAuditLogController;
 use App\Http\Controllers\Api\AdminPaymentController;
 use App\Http\Controllers\Api\AdminReviewController;
 use App\Http\Controllers\Api\AdminStaffController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\PrivacyConsentController;
+use App\Http\Controllers\Api\PortalOverviewController;
 use App\Http\Controllers\Api\PublicShopController;
 use App\Http\Controllers\Api\ShopAppointmentController;
 use App\Http\Controllers\Api\ShopController;
@@ -52,6 +54,8 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/user/profile', [AuthController::class, 'updateProfile']);
 
         Route::prefix('admin')->group(function (): void {
+            Route::middleware('permission:admin.dashboard.view')->get('/overview', [PortalOverviewController::class, 'admin']);
+
             Route::middleware('permission:admin.sliders.manage')->group(function (): void {
                 Route::get('/sliders', [SliderController::class, 'adminIndex']);
                 Route::post('/sliders', [SliderController::class, 'store']);
@@ -87,6 +91,7 @@ Route::prefix('v1')->group(function (): void {
             );
 
             Route::middleware('role:super_admin')->group(function (): void {
+                Route::get('/audit-logs', [AdminAuditLogController::class, 'index']);
                 Route::get('/financial-logs', [FinanceController::class, 'adminIndex']);
                 Route::get('/coupons', [CouponController::class, 'adminIndex']);
                 Route::post('/coupons', [CouponController::class, 'adminStore']);
@@ -127,6 +132,7 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('role:shop_owner')->prefix('shop')->group(function (): void {
+            Route::get('/overview', [PortalOverviewController::class, 'shop']);
             Route::get('/financial-logs', [FinanceController::class, 'shopIndex']);
             Route::get('/coupons', [CouponController::class, 'shopIndex']);
             Route::post('/coupons', [CouponController::class, 'shopStore']);
@@ -149,7 +155,10 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/content-submissions', [ShopController::class, 'submitContent']);
         });
 
-        Route::middleware('role:sponsor')->post('/sponsor/approval-requests', [SponsorApprovalController::class, 'create']);
+        Route::middleware('role:sponsor')->prefix('sponsor')->group(function (): void {
+            Route::get('/approval-requests', [SponsorApprovalController::class, 'myIndex']);
+            Route::post('/approval-requests', [SponsorApprovalController::class, 'create']);
+        });
         Route::middleware('role:customer')->group(function (): void {
             Route::post('/coupons/validate', [CouponController::class, 'validateCode']);
             Route::get('/user/active-appointments', [AppointmentController::class, 'active']);

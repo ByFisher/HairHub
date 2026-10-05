@@ -122,13 +122,13 @@ class AppointmentPaymentController extends Controller
             ->firstOrFail();
 
         if ($payment->status === 'refunded') {
-            return $this->returnToCustomer('refunded');
+            return $this->returnToCustomer('refunded', (string) $payment->appointment_id);
         }
         if (in_array($payment->status, ['paid', 'refund_pending', 'refund_failed'], true)) {
-            return $this->returnToCustomer($this->refundIfAppointmentWasCancelled($payment, $cancellation) ?? 'success');
+            return $this->returnToCustomer($this->refundIfAppointmentWasCancelled($payment, $cancellation) ?? 'success', (string) $payment->appointment_id);
         }
         if ($payment->status !== 'pending') {
-            return $this->returnToCustomer('failed');
+            return $this->returnToCustomer('failed', (string) $payment->appointment_id);
         }
 
         try {
@@ -136,18 +136,18 @@ class AppointmentPaymentController extends Controller
         } catch (PaymentGatewayException) {
             Log::warning('iyzico checkout verification is pending.', ['payment_id' => $payment->id]);
 
-            return $this->returnToCustomer('verification-pending');
+            return $this->returnToCustomer('verification-pending', (string) $payment->appointment_id);
         }
 
         if ($result['status'] !== 'success') {
             $this->markCheckoutFailed($payment);
 
-            return $this->returnToCustomer('failed');
+            return $this->returnToCustomer('failed', (string) $payment->appointment_id);
         }
 
         $this->recordSuccessfulPayment($payment, $result, $ledger);
 
-        return $this->returnToCustomer($this->refundIfAppointmentWasCancelled($payment, $cancellation) ?? 'success');
+        return $this->returnToCustomer($this->refundIfAppointmentWasCancelled($payment, $cancellation) ?? 'success', (string) $payment->appointment_id);
     }
 
     public function verifyCustomerCheckout(
@@ -264,9 +264,12 @@ class AppointmentPaymentController extends Controller
             ->update(['status' => 'failed', 'payment_status' => 'failed', 'failure_code' => 'checkout_payment_failed', 'updated_at' => now()]);
     }
 
-    private function returnToCustomer(string $status)
+    private function returnToCustomer(string $status, ?string $appointmentId = null)
     {
         $url = rtrim((string) config('payments.frontend_url'), '/').'/my-appointments';
+        if ($appointmentId !== null) {
+            $url .= '/'.rawurlencode($appointmentId);
+        }
 
         return redirect()->away($url.'?'.http_build_query(['payment' => $status]));
     }

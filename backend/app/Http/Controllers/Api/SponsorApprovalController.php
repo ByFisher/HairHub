@@ -31,6 +31,15 @@ class SponsorApprovalController extends Controller
         ));
     }
 
+    public function myIndex(Request $request)
+    {
+        return response()->json(SponsorRequest::query()
+            ->where('sponsor_user_id', $request->user()->id)
+            ->latest()
+            ->get()
+            ->map(fn (SponsorRequest $approval) => $this->present($approval)));
+    }
+
     public function supportIndex()
     {
         return response()->json(SponsorRequest::query()->where('kind', 'support')->with('sponsor')->latest()->get()->map(

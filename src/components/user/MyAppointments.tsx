@@ -251,6 +251,12 @@ function AppointmentRow({
         {appointment.status === "completed" && appointment.isRated && (
           <span className="text-[11px] text-emerald-400">✓ Değerlendirildi</span>
         )}
+        <Link
+          href={`/my-appointments/${encodeURIComponent(appointment.id)}`}
+          className="rounded border border-zinc-800 px-3 py-1.5 text-[11px] text-zinc-300 hover:bg-zinc-900"
+        >
+          Detayları görüntüle
+        </Link>
         {(appointment.status === "pending" || appointment.status === "confirmed") && (
           <>
             {appointment.demoPaymentEnabled && appointment.payment.status === "unpaid" && (
