@@ -13,14 +13,16 @@ import { NotificationMenu } from "@/components/header/notification-menu";
 import { UserDropdown } from "@/components/header/user-dropdown";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { ThemeToggle } from "@/components/providers/theme-provider";
+import { GenderSwitcher } from "@/components/providers/gender-provider";
 
 const links = [
-  { href: "/shops", label: "Dükkan Ara" },
+  { href: "/shops", label: "Salonları keşfet" },
 ];
 
 function requiresCustomer(pathname: string) {
   return pathname === "/my-appointments"
     || pathname.startsWith("/my-appointments/")
+    || pathname === "/my-favorites"
     || pathname === "/notifications"
     || pathname === "/checkout"
     || pathname.startsWith("/demo-iyzico/")
@@ -48,15 +50,17 @@ function CustomerLayoutContent({
         <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <Link href="/shops" className="flex items-center gap-2 text-sm font-semibold tracking-tight whitespace-nowrap">
             <BrandLogo size={32} className="rounded-md" />
-            HemenTıraş
+            HairHub
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-zinc-400 sm:gap-3 lg:gap-4">
+            <GenderSwitcher />
             {links.map((link) => (
               <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined} className="whitespace-nowrap hover:text-zinc-100">{link.label}</Link>
             ))}
+            {isCustomer && <Link href="/my-favorites" aria-current={pathname === "/my-favorites" ? "page" : undefined} className="whitespace-nowrap hover:text-zinc-100">Favorilerim</Link>}
             {isCustomer && <Link href="/my-appointments" className="whitespace-nowrap hover:text-zinc-100">Randevularım</Link>}
             {user && isCustomer && <NotificationMenu />}
-            <ThemeToggle className="size-9 rounded-md border-zinc-800 text-zinc-400 hover:bg-zinc-900" />
+            <ThemeToggle />
             {user && (
               <UserDropdown
                 user={user}

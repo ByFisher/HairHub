@@ -9,6 +9,7 @@ import { ShopGrid } from "@/components/user/ShopGrid";
 import type { ShopSearchFilters } from "@/lib/services";
 import { useApiQuery } from "@/lib/use-api";
 import { FormCheckboxField, FormField, FormFieldset, FormInput, FormListbox } from "@/components/ui/form";
+import { useGender } from "@/components/providers/gender-provider";
 
 function LandingDiscoveryContent({
   initialCity,
@@ -17,6 +18,7 @@ function LandingDiscoveryContent({
   initialCity: string;
   initialDistrict: string;
 }) {
+  const { gender } = useGender();
   const [draft, setDraft] = useState({
     search: "",
     city: initialCity,
@@ -31,7 +33,7 @@ function LandingDiscoveryContent({
     sort: "rating_desc",
   });
 
-  const query = useMemo(() => ["/shops", filters] as const, [filters]);
+  const query = useMemo(() => ["/shops", { ...filters, gender }] as const, [filters, gender]);
   const shops = useApiQuery<import("@/types/api").Shop[]>(query, {
     list: true,
     query: {
@@ -39,6 +41,7 @@ function LandingDiscoveryContent({
       city: filters.city,
       district: filters.district,
       service: filters.service,
+      gender: gender === "all" ? undefined : gender,
       min_rating: filters.minRating,
       sort: filters.sort,
       per_page: filters.perPage,
@@ -49,7 +52,10 @@ function LandingDiscoveryContent({
     ["/locations/districts", draft.city],
     { enabled: Boolean(draft.city), list: true, query: { city: draft.city } },
   );
-  const { data: services = [], error: servicesError } = useApiQuery<string[]>(["/shops/meta/services"], { list: true });
+  const { data: services = [], error: servicesError } = useApiQuery<string[]>(["/shops/meta/services", gender], {
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
 
   const changeCity = (city: string) => {
     setDraft((current) => ({ ...current, city, district: "" }));
@@ -93,13 +99,19 @@ function LandingDiscoveryContent({
     <section id="salonlari-kesfet" className="mx-auto w-full max-w-7xl scroll-mt-6 px-5 pb-20 sm:px-8 lg:px-12">
       <div className="mb-6">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-300">Sana yakın bakım</p>
-        <h2 className="landing-discovery-title mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Salonları keşfet</h2>
-        <p className="mt-2 text-sm text-zinc-500">Konumuna uygun berber ve kuaförleri, hizmetlerini ve fiyatlarını karşılaştır.</p>
+        <h2 className="landing-discovery-title mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          {gender === "male"
+            ? "Berber ve bakım salonlarını keşfet"
+            : gender === "female"
+              ? "Kuaför ve güzellik salonlarını keşfet"
+              : "Tüm salonları keşfet"}
+        </h2>
+        <p className="mt-2 text-sm text-zinc-500">Konumuna uygun salonları, hizmetleri ve fiyatları karşılaştır.</p>
       </div>
 
       <form onSubmit={applySearch} className="w-full">
         <FormFieldset className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-2xl shadow-black/20 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(170px,0.9fr)_auto]">
-          <FormField label="Dükkan veya berber" description="İşletme adıyla salon arayın." className="justify-center sm:col-span-2 xl:col-span-1">
+          <FormField label="Salon veya işletme adı" description="İşletme adına göre salon arayın." className="justify-center sm:col-span-2 xl:col-span-1">
             <FormInput
               value={draft.search}
               onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
@@ -176,7 +188,13 @@ function LandingDiscoveryContent({
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-zinc-100">Tüm berber &amp; kuaförler</h3>
+              <h3 className="text-base font-semibold text-zinc-100">
+                {gender === "male"
+                  ? "Erkek berberleri ve unisex salonlar"
+                  : gender === "female"
+                    ? "Kadın kuaförleri ve unisex salonlar"
+                    : "Erkek, kadın ve unisex salonlar"}
+              </h3>
               <p className="mt-1 text-[11px] text-zinc-500">
                 {shops.isLoading ? "Salonlar yükleniyor..." : `${shops.data?.length ?? 0} salon listeleniyor`}
               </p>
@@ -206,6 +224,7 @@ function LandingDiscoveryContent({
 
 export function LandingDiscovery() {
   const { user, status, error, refresh } = useAuth();
+  const { gender } = useGender();
   if (status === "loading") return <div className="mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-12"><SkeletonCards /></div>;
 
   const city = status === "authenticated" && user?.role === "customer" ? user.city ?? "" : "";
@@ -218,7 +237,7 @@ export function LandingDiscovery() {
           <ErrorAlert message={error} onRetry={() => void refresh()} />
         </div>
       )}
-      <LandingDiscoveryContent key={`${user?.id ?? "guest"}:${city}:${district}`} initialCity={city} initialDistrict={district} />
+      <LandingDiscoveryContent key={`${user?.id ?? "guest"}:${city}:${district}:${gender}`} initialCity={city} initialDistrict={district} />
     </>
   );
 }

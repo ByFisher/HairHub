@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['title', 'description', 'image_path', 'link_url', 'link_label', 'sort_order', 'is_active'])]
+#[Fillable(['title', 'description', 'image_path', 'link_url', 'link_label', 'sort_order', 'is_active', 'target_gender'])]
 class Slider extends Model
 {
     protected function casts(): array

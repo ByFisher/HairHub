@@ -2,15 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Check, Clock, MapPin, Phone, ShoppingBag, Star } from "lucide-react";
+import { Check, Clock, Flame, MapPin, Phone, ShoppingBag, Star } from "lucide-react";
 import { useApiQuery } from "@/lib/use-api";
 import { ErrorAlert, Skeleton, SkeletonRows } from "@/components/feedback/Skeleton";
 import type { Service, Shop, Staff, StaffReview } from "@/types/api";
 import { useAuth } from "@/components/providers/auth-provider";
 import { FavoriteButton } from "@/components/user/FavoriteButton";
 import { useFavorites } from "@/components/user/use-favorites";
+import { useGender } from "@/components/providers/gender-provider";
 
 const DAY_LABELS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+const FEATURED_STAFF_SCORE = 100;
 
 function RatingBadge({ value, count }: { value: number; count: number }) {
   return (
@@ -22,14 +24,25 @@ function RatingBadge({ value, count }: { value: number; count: number }) {
   );
 }
 
+function HighScoreBadge({ score }: { score: number }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-orange-900/70 bg-orange-950/40 px-2 py-0.5 text-[11px] font-medium text-orange-300">
+      <Flame size={12} className="fill-orange-400/30" aria-hidden="true" />
+      {Math.round(score)} High
+    </span>
+  );
+}
+
 export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?: boolean }) {
   const router = useRouter();
   const [activeStaffId, setActiveStaffId] = useState<string | null>(null);
+  const [staffSort, setStaffSort] = useState<"recent" | "high_score">("recent");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [cartToast, setCartToast] = useState("");
   const cartToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { requestCustomerAccess, status: authStatus } = useAuth();
   const favorites = useFavorites();
+  const { gender } = useGender();
 
   useEffect(() => () => {
     if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
@@ -40,8 +53,16 @@ export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?
     { query: {} },
   );
   const detailShopId = shop.data?.id ?? (bySlug ? "" : shopId);
-  const services = useApiQuery<Service[]>(["/shops/:id/services", detailShopId], { enabled: Boolean(detailShopId), list: true });
-  const staff = useApiQuery<Staff[]>(["/shops/:id/staff", detailShopId], { enabled: Boolean(detailShopId), list: true });
+  const services = useApiQuery<Service[]>(["/shops/:id/services", detailShopId, gender], {
+    enabled: Boolean(detailShopId),
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
+  const staff = useApiQuery<Staff[]>(["/shops/:id/staff", detailShopId, staffSort], {
+    enabled: Boolean(detailShopId),
+    list: true,
+    query: { sort: staffSort === "high_score" ? staffSort : undefined },
+  });
   const reviews = useApiQuery<StaffReview[]>(
     ["/shops/:id/staff/:staffId/reviews", detailShopId, activeStaffId],
     { enabled: Boolean(detailShopId && activeStaffId), list: true, query: { staff_id: activeStaffId ?? undefined } },
@@ -116,7 +137,7 @@ export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?
             >
               Randevu al
             </button>
-            <div className="relative h-9 w-9">
+            <div className="h-11 w-11">
               <FavoriteButton
                 isFavorite={favorites.has(detail.id)}
                 isPending={authStatus === "loading" || favorites.pendingShopId === detail.id}
@@ -196,7 +217,20 @@ export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-zinc-200">Personeller</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-zinc-200">Personeller</h2>
+          <label className="flex items-center gap-2 text-[11px] text-zinc-500">
+            <span>Sıralama</span>
+            <select
+              value={staffSort}
+              onChange={(event) => setStaffSort(event.currentTarget.value === "high_score" ? "high_score" : "recent")}
+              className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-300 outline-none focus:border-zinc-600"
+            >
+              <option value="recent">Varsayılan</option>
+              <option value="high_score">En yüksek High Puan</option>
+            </select>
+          </label>
+        </div>
         <ErrorAlert message={staff.error} onRetry={staff.refresh} />
         {staff.isLoading ? (
           <SkeletonRows rows={3} columns={4} />
@@ -216,7 +250,15 @@ export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?
                   <div>
                     <p className="text-sm font-medium text-zinc-100">{member.firstName} {member.lastName}</p>
                     <p className="text-[11px] text-zinc-500">{member.title} · {member.experienceYears} yıl</p>
-                    <RatingBadge value={member.averageRating} count={member.reviewCount} />
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <RatingBadge value={member.averageRating} count={member.reviewCount} />
+                      <HighScoreBadge score={member.highScore} />
+                      {member.highScore >= FEATURED_STAFF_SCORE && (
+                        <span className="rounded-full border border-amber-800/70 bg-amber-950/40 px-2 py-0.5 text-[10px] font-medium text-amber-200">
+                          Öne Çıkan
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-[11px] leading-relaxed text-zinc-400">{member.biography}</p>
@@ -262,6 +304,10 @@ export function ShopDetail({ shopId, bySlug = false }: { shopId: string; bySlug?
                     <RatingBadge value={review.rating} count={1} />
                   </div>
                   {review.comment && <p className="mt-2 leading-relaxed text-zinc-300">{review.comment}</p>}
+                  {review.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={review.photoUrl} alt={`${review.customer?.firstName ?? "Müşteri"} tarafından paylaşılan sonuç fotoğrafı`} className="mt-3 max-h-64 rounded-lg object-cover" />
+                  )}
                 </li>
               ))}
             </ul>

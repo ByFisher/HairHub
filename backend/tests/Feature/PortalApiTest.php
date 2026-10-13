@@ -79,6 +79,11 @@ class PortalApiTest extends TestCase
             ->assertOk()->assertJsonPath('isFavorite', true);
         $this->actingAs($customer)->getJson('/api/v1/user/favorites')
             ->assertOk()->assertExactJson([(string) $shop->id]);
+        $this->getJson('/api/v1/user/favorite-shops')
+            ->assertOk()
+            ->assertJsonPath('0.id', (string) $shop->id)
+            ->assertJsonPath('0.name', 'favorite-public-shop')
+            ->assertJsonPath('0.services', []);
         $this->actingAs($customer)->deleteJson("/api/v1/user/favorites/{$shop->id}")
             ->assertOk()->assertJsonPath('isFavorite', false);
         $this->assertDatabaseMissing('shop_favorites', ['user_id' => $customer->id, 'shop_id' => $shop->id]);
@@ -377,6 +382,7 @@ class PortalApiTest extends TestCase
             'district' => 'Kadıköy',
             'address' => 'Moda Caddesi No 1',
             'shopPhone' => '02161234567',
+            'taxNumber' => '1234567899',
         ];
 
         $this->postJson('/api/v1/auth/register-shop-owner', $payload)
@@ -396,6 +402,7 @@ class PortalApiTest extends TestCase
         $this->assertDatabaseHas('shops', [
             'id' => $shop->id,
             'status' => 'pending_approval',
+            'tax_number' => '1234567899',
         ]);
         $this->assertGuest();
 
@@ -471,6 +478,10 @@ class PortalApiTest extends TestCase
             'phone' => '05329876543',
             'city' => 'İstanbul',
             'district' => 'Beşiktaş',
+            'address' => 'Barbaros Bulvarı No 10',
+            'taxNumber' => '1234567899',
+            'latitude' => 41.0438,
+            'longitude' => 29.0094,
         ])->assertCreated()
             ->assertJsonPath('user.role', 'shop_owner')
             ->assertJsonPath('user.status', 'pending_approval')
@@ -488,6 +499,10 @@ class PortalApiTest extends TestCase
             'name' => 'API Shop',
             'status' => 'pending_approval',
             'is_approved' => false,
+            'street' => 'Barbaros Bulvarı No 10',
+            'tax_number' => '1234567899',
+            'latitude' => 41.0438,
+            'longitude' => 29.0094,
         ]);
         $this->assertGuest();
     }
@@ -502,10 +517,86 @@ class PortalApiTest extends TestCase
             'phone' => '05329876543',
             'city' => 'İstanbul',
             'district' => 'Çankaya',
+            'address' => 'Geçersiz ilçe caddesi 1',
+            'taxNumber' => '1234567899',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['district']);
 
         $this->assertDatabaseMissing('users', ['email' => 'invalid-location-owner@example.test']);
+    }
+
+    public function test_shop_registration_requires_a_valid_tax_number_and_complete_coordinates(): void
+    {
+        $payload = [
+            'fullName' => 'Validation Shop Owner',
+            'email' => 'validation-shop-owner@example.test',
+            'password' => 'shop-owner-password-123',
+            'shopName' => 'Validation Shop',
+            'phone' => '05329876543',
+            'city' => 'İstanbul',
+            'district' => 'Beşiktaş',
+            'address' => 'Barbaros Bulvarı No 10',
+            'taxNumber' => '12345',
+            'latitude' => 41.0438,
+        ];
+
+        $this->postJson('/api/v1/auth/register-shop', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['taxNumber', 'longitude']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'validation-shop-owner@example.test']);
+    }
+
+    public function test_shop_registration_endpoints_reject_invalid_vkns_without_creating_applications(): void
+    {
+        $registrations = [
+            [
+                'endpoint' => '/api/v1/auth/register-shop',
+                'email_prefix' => 'invalid-vkn-shop',
+                'fields' => [
+                    'fullName' => 'Invalid VKN Owner',
+                    'password' => 'shop-owner-password-123',
+                    'shopName' => 'Invalid VKN Shop',
+                    'phone' => '05329876543',
+                    'city' => 'İstanbul',
+                    'district' => 'Beşiktaş',
+                    'address' => 'Barbaros Bulvarı No 10',
+                ],
+            ],
+            [
+                'endpoint' => '/api/v1/auth/register-shop-owner',
+                'email_prefix' => 'invalid-vkn-owner',
+                'fields' => [
+                    'name' => 'Invalid VKN Owner',
+                    'phone' => '05329876543',
+                    'password' => 'shop-owner-password-123',
+                    'password_confirmation' => 'shop-owner-password-123',
+                    'shopName' => 'Invalid VKN Shop',
+                    'city' => 'İstanbul',
+                    'district' => 'Beşiktaş',
+                    'address' => 'Barbaros Bulvarı No 10',
+                    'shopPhone' => '05329876543',
+                ],
+            ],
+        ];
+
+        $requestIp = 1;
+        foreach ($registrations as $registration) {
+            foreach (['1234567890', '0000000000'] as $index => $taxNumber) {
+                $email = "{$registration['email_prefix']}-{$index}@example.test";
+
+                $this->withServerVariables(['REMOTE_ADDR' => "192.0.2.{$requestIp}"])
+                    ->postJson($registration['endpoint'], [
+                        ...$registration['fields'],
+                        'email' => $email,
+                        'taxNumber' => $taxNumber,
+                    ])->assertUnprocessable()
+                    ->assertJsonPath('errors.taxNumber.0', 'Geçerli bir Vergi Kimlik Numarası giriniz.');
+
+                $this->assertDatabaseMissing('users', ['email' => $email]);
+                $requestIp++;
+            }
+        }
     }
 
     public function test_customers_only_see_active_shops_that_have_admin_approval(): void
@@ -513,7 +604,12 @@ class PortalApiTest extends TestCase
         $customer = $this->user('customer', 'Shop Search Customer', 'shop-search@example.test');
         $approvedOwner = $this->user('shop_owner', 'Approved Owner', 'approved-owner@example.test');
         $approvedShop = $this->shop($approvedOwner, 'approved-public-shop');
-        $approvedShop->update(['is_approved' => true]);
+        $approvedShop->update([
+            'is_approved' => true,
+            'tax_number' => '1234567890',
+            'latitude' => 41.0438,
+            'longitude' => 29.0094,
+        ]);
 
         $unapprovedOwner = $this->user('shop_owner', 'Unapproved Owner', 'unapproved-owner@example.test');
         $unapprovedShop = $this->shop($unapprovedOwner, 'unapproved-public-shop');
@@ -521,6 +617,9 @@ class PortalApiTest extends TestCase
         $response = $this->actingAs($customer)->getJson('/api/v1/shops')->assertOk();
         $response->assertJsonPath('data.0.id', (string) $approvedShop->id)
             ->assertJsonPath('data.0.isApproved', true)
+            ->assertJsonPath('data.0.address.latitude', 41.0438)
+            ->assertJsonPath('data.0.address.longitude', 29.0094)
+            ->assertJsonMissing(['tax_number' => '1234567890'])
             ->assertJsonMissing(['id' => (string) $unapprovedShop->id]);
 
         $this->getJson("/api/v1/shops/{$unapprovedShop->id}")->assertNotFound();

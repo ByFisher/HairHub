@@ -71,7 +71,7 @@ function notificationItems(appointments: Appointment[], readIds: Set<string>): A
       item("status", "Randevu onaylandı", `${shopName} · ${startTime}`);
       const timeUntilAppointment = new Date(startsAt).getTime() - now;
       if (timeUntilAppointment >= 0 && timeUntilAppointment <= 60 * 60 * 1000) {
-        item("reminder", "Randevunuz yaklaşıyor", `Bugün saat ${new Date(startsAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}'da ${shopName} berberinde randevunuz var.`);
+        item("reminder", "Randevunuz yaklaşıyor", `Bugün saat ${new Date(startsAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}'da ${shopName} salonunda randevunuz var.`);
       }
     } else if (appointment.status === "completed") {
       item("status", "Randevu tamamlandı", `${shopName} · ${startTime}`);

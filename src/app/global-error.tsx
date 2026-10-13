@@ -11,7 +11,7 @@ interface GlobalErrorProps {
 /** Route segment'lerinin tamamını sarar (root layout'ın altında). */
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    console.error("HemenTıraş panel hatası:", error);
+    console.error("HairHub panel hatası:", error);
   }, [error]);
 
   return (

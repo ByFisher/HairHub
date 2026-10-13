@@ -51,11 +51,19 @@ class AppointmentCancellationService
 
             $payment = $locked->payment()->lockForUpdate()->first();
             if ($payment?->status === 'paid') {
-                $payment->update([
-                    'status' => 'refund_pending',
-                    'refund_idempotency_key' => (string) Str::uuid(),
-                    'failure_code' => null,
-                ]);
+                if ($payment->amount > 0) {
+                    $payment->update([
+                        'status' => 'refund_pending',
+                        'refund_idempotency_key' => (string) Str::uuid(),
+                        'failure_code' => null,
+                    ]);
+                } else {
+                    $payment->update([
+                        'status' => 'refunded',
+                        'refunded_at' => now(),
+                        'failure_code' => null,
+                    ]);
+                }
             } elseif ($payment?->status === 'refund_failed') {
                 $payment->update(['status' => 'refund_pending', 'failure_code' => null]);
             }

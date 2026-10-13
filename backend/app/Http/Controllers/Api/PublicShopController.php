@@ -10,6 +10,7 @@ use App\Models\StaffReview;
 use App\Services\LocationCatalog;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PublicShopController extends Controller
@@ -106,11 +107,18 @@ class PublicShopController extends Controller
             ->map(fn (ShopService $service) => $this->serviceData($service)));
     }
 
-    public function staff(Shop $shop)
+    public function staff(Request $request, Shop $shop)
     {
         abort_unless($shop->status === 'active' && $shop->is_approved, 404);
+        $filters = $request->validate([
+            'sort' => ['nullable', Rule::in(['high_score'])],
+        ]);
+        $staff = $shop->staff()->where('approval_status', 'approved');
+        $staff = ($filters['sort'] ?? null) === 'high_score'
+            ? $staff->orderByDesc('high_score')->orderBy('id')
+            : $staff->latest();
 
-        return response()->json($shop->staff()->where('approval_status', 'approved')->latest()->get()
+        return response()->json($staff->get()
             ->map(fn (ShopStaff $member) => $this->staffData($member, false)));
     }
 
@@ -134,6 +142,7 @@ class PublicShopController extends Controller
                 'customerId' => (string) $review->customer_id,
                 'rating' => $review->rating,
                 'comment' => $review->comment,
+                'photoUrl' => $review->photo_path ? Storage::disk('public')->url($review->photo_path) : null,
                 'createdAt' => $review->created_at->toISOString(),
                 'customer' => [
                     'id' => (string) $review->customer_id,
@@ -219,9 +228,10 @@ class PublicShopController extends Controller
         $services = ShopService::query()
             ->where('is_active', true)
             ->when(isset($filters['gender']), fn ($query) => $query->whereIn('target_gender', [$filters['gender'], 'unisex']))
-            ->whereHas('shop', function ($query) {
+            ->whereHas('shop', function ($query) use ($filters) {
                 $query->where('status', 'active')
-                    ->where('is_approved', true);
+                    ->where('is_approved', true)
+                    ->when(isset($filters['gender']), fn ($shops) => $shops->whereIn('gender_type', [$filters['gender'], 'unisex']));
             })
             ->select('name')
             ->distinct()
@@ -255,8 +265,8 @@ class PublicShopController extends Controller
                 'district' => ['id' => $shop->district, 'name' => $shop->district, 'city' => ['id' => $shop->city, 'name' => $shop->city, 'plateCode' => '']],
                 'street' => $shop->street,
                 'fullAddress' => trim($shop->street.', '.$shop->district.', '.$shop->city, ', '),
-                'latitude' => null,
-                'longitude' => null,
+                'latitude' => $shop->latitude,
+                'longitude' => $shop->longitude,
             ],
             'phone' => $shop->phone ?? '',
             'workingHours' => $shop->working_hours ?? [],
@@ -314,6 +324,8 @@ class PublicShopController extends Controller
             'isApproved' => true,
             'averageRating' => count($ratings) ? array_sum($ratings) / count($ratings) : 0,
             'reviewCount' => count($ratings),
+            'highScore' => (float) $staff->high_score,
+            'totalPhotoReviews' => (int) $staff->total_photo_reviews,
             'completedAppointmentCount' => $staff->appointments()->where('status', 'completed')->count(),
             'workingHours' => $staff->working_hours ?? [],
             'services' => $withServices ? $staff->shop->services()->where('is_active', true)->get()->map(fn (ShopService $service) => $this->serviceData($service)) : [],

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Star } from "lucide-react";
 import { useApiQuery } from "@/lib/use-api";
 import { ErrorAlert, SkeletonRows } from "@/components/feedback/Skeleton";
 import type { AppointmentSlot, Service, Shop, Staff } from "@/types/api";
 import { FormField, FormFieldset, FormInput } from "@/components/ui/form";
+import { useGender } from "@/components/providers/gender-provider";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -34,10 +35,22 @@ export function BookingFlow({ shopId }: { shopId: string }) {
   });
   const [date, setDate] = useState(todayIso());
   const [slot, setSlot] = useState<AppointmentSlot | null>(null);
+  const { gender } = useGender();
+  const previousGender = useRef(gender);
+
+  useEffect(() => {
+    if (previousGender.current === gender) return;
+    previousGender.current = gender;
+    setServiceIds([]);
+    setSlot(null);
+  }, [gender]);
 
   const shop = useApiQuery<Shop>(["/shops/:id", shopId]);
   const staff = useApiQuery<Staff[]>(["/shops/:id/staff", shopId], { list: true });
-  const services = useApiQuery<Service[]>(["/shops/:id/services", shopId], { list: true });
+  const services = useApiQuery<Service[]>(["/shops/:id/services", shopId, gender], {
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
   const slots = useApiQuery<AppointmentSlot[]>(
     ["/shops/:id/staff/:staffId/availability", shopId, staffId, serviceIds.join(","), date],
     {

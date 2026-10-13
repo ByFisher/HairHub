@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'shop_id', 'first_name', 'last_name', 'title', 'experience_years', 'biography',
-    'approval_status', 'working_hours', 'skills', 'work_logs',
+    'approval_status', 'working_hours', 'skills', 'work_logs', 'high_score', 'total_photo_reviews',
 ])]
 class ShopStaff extends Model
 {
@@ -21,6 +21,8 @@ class ShopStaff extends Model
             'working_hours' => 'array',
             'skills' => 'array',
             'work_logs' => 'array',
+            'high_score' => 'float',
+            'total_photo_reviews' => 'integer',
         ];
     }
 

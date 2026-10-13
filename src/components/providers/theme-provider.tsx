@@ -53,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle() {
   const context = useContext(ThemeContext);
   if (!context) throw new Error("ThemeToggle must be used within ThemeProvider.");
   const label = context.theme === "dark" ? "Açık temaya geç" : "Koyu temaya geç";
@@ -63,10 +63,22 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       type="button"
       aria-label={label}
       title={label}
+      aria-pressed={context.theme === "light"}
       onClick={context.toggleTheme}
-      className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 transition hover:bg-zinc-800 ${className}`}
+      className="theme-toggle-switch"
     >
-      {context.theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+      <span className="theme-toggle-track" aria-hidden="true">
+        <span
+          className="theme-toggle-indicator"
+          style={{ transform: `translateX(${context.theme === "light" ? "100%" : "0"})` }}
+        />
+        <span className={`theme-toggle-icon${context.theme === "dark" ? " theme-toggle-icon--active" : ""}`}>
+          <Moon size={16} />
+        </span>
+        <span className={`theme-toggle-icon${context.theme === "light" ? " theme-toggle-icon--active" : ""}`}>
+          <Sun size={16} />
+        </span>
+      </span>
     </button>
   );
 }

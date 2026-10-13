@@ -8,9 +8,13 @@ import type {
   AdminStaff,
   AccessLog,
   AdminReview,
+  AdminProfessional,
+  AdminShopServiceClassification,
   CreateAppointmentInput,
   CouponQuote,
   EntityType,
+  GenderMode,
+  LoyaltySummary,
   MaskedUser,
   Paginated,
   Service,
@@ -42,7 +46,39 @@ export const ADMIN_ENTITY_PATH: Record<EntityType, string> = {
   sponsors: "/admin/sponsors",
 };
 
+export interface SmtpSettings {
+  sender_name: string;
+  sender_email: string;
+  smtp_mailer: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: null;
+  smtp_encryption: "tls" | "ssl" | "none";
+  has_password: boolean;
+  source: "database" | "environment";
+}
+
+export interface SmtpSettingsInput {
+  sender_name: string;
+  sender_email: string;
+  smtp_mailer: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string;
+  smtp_encryption: string;
+}
+
 export const adminApi = {
+  smtpSettings: () => get<{ data: SmtpSettings | null }>("/admin/settings/smtp"),
+
+  saveSmtpSettings: (input: SmtpSettingsInput) =>
+    post<{ data: SmtpSettings }>("/admin/settings/smtp", input),
+
+  sendSmtpTestEmail: (input: { email: string; subject: string; message: string }) =>
+    post<{ message: string }>("/admin/settings/smtp/test", input),
+
   staff: () => requestList<AdminStaff>("/admin/staff"),
 
   createStaff: (input: { name: string; email: string; phone: string; password: string; role: AdminRole }) =>
@@ -116,6 +152,17 @@ export const adminApi = {
       },
     }),
 
+  professionals: (title: "Kuaför" | "Berber", filters: AdminDirectoryFilters = {}) =>
+    requestList<AdminProfessional>("/admin/shop-staff", {
+      query: {
+        title,
+        search: filters.search,
+        status: filters.status,
+        page: filters.page,
+        per_page: filters.perPage,
+      },
+    }),
+
   /** KVKK: dönen kayıtlar maskelidir, tam iletişim bilgisi içermez. */
   users: (filters: AdminDirectoryFilters = {}) =>
     requestList<MaskedUser>("/admin/users", {
@@ -142,6 +189,18 @@ export const adminApi = {
 
   setShopStatus: (shopId: string, status: "active" | "suspended") =>
     patch<Shop>(`/admin/shops/${encodeURIComponent(shopId)}/status`, { status }),
+
+  updateShopGender: (shopId: string, genderType: Shop["genderType"]) =>
+    patch<Shop>(`/admin/shops/${encodeURIComponent(shopId)}/gender`, { genderType }),
+
+  shopServiceClassifications: (shopId: string) =>
+    requestList<AdminShopServiceClassification>(`/admin/shops/${encodeURIComponent(shopId)}/services`),
+
+  updateShopServiceGender: (shopId: string, serviceId: string, targetGender: AdminShopServiceClassification["targetGender"]) =>
+    patch<AdminShopServiceClassification>(
+      `/admin/shops/${encodeURIComponent(shopId)}/services/${encodeURIComponent(serviceId)}/gender`,
+      { targetGender },
+    ),
 
   approvals: (status: AdminApproval["status"] = "pending_approval") =>
     requestList<AdminApproval>("/admin/approvals", { query: { status } }),
@@ -174,6 +233,7 @@ export interface ShopSearchFilters {
   district?: string;
   /** Hizmet adına göre filtreleme */
   service?: string;
+  gender?: GenderMode;
   minRating?: number;
   sort?: "rating_desc" | "rating_asc" | "name_asc" | "reviews_desc";
   page?: number;
@@ -189,6 +249,7 @@ export const shopApi = {
         city: filters.city,
         district: filters.district,
         service: filters.service,
+        gender: filters.gender === "all" ? undefined : filters.gender,
         min_rating: filters.minRating,
         sort: filters.sort,
         page: filters.page,
@@ -198,8 +259,10 @@ export const shopApi = {
 
   detail: (shopId: string) => get<Shop>(`/shops/${encodeURIComponent(shopId)}`),
 
-  services: (shopId: string) =>
-    requestList<Service>(`/shops/${encodeURIComponent(shopId)}/services`, { query: { is_active: true } }),
+  services: (shopId: string, gender?: GenderMode) =>
+    requestList<Service>(`/shops/${encodeURIComponent(shopId)}/services`, {
+      query: { is_active: true, gender: gender === "all" ? undefined : gender },
+    }),
 
   staff: (shopId: string) => requestList<Staff>(`/shops/${encodeURIComponent(shopId)}/staff`),
 
@@ -217,6 +280,8 @@ export const shopApi = {
     ),
 
   favoriteIds: () => requestList<string>("/user/favorites"),
+
+  favoriteShops: () => requestList<Shop>("/user/favorite-shops"),
 
   favorite: (shopId: string) =>
     put<{ shopId: string; isFavorite: boolean }>(`/user/favorites/${encodeURIComponent(shopId)}`),
@@ -259,11 +324,17 @@ export const appointmentApi = {
     post<Appointment>(`/appointments/${encodeURIComponent(appointmentId)}/checkout/verify`),
 
   /** Tamamlanmış randevu için 1-5 yıldız + yorum. */
-  review: (appointmentId: string, rating: number, comment?: string) =>
-    post<StaffReview>(`/appointments/${encodeURIComponent(appointmentId)}/review`, {
-      rating,
-      comment: comment?.trim() || null,
-    }),
+  review: (appointmentId: string, rating: number, comment?: string, photo?: File) => {
+    const path = `/appointments/${encodeURIComponent(appointmentId)}/review`;
+    const normalizedComment = comment?.trim() || null;
+    if (!photo) return post<StaffReview>(path, { rating, comment: normalizedComment });
+
+    const body = new FormData();
+    body.set("rating", String(rating));
+    if (normalizedComment) body.set("comment", normalizedComment);
+    body.set("photo", photo);
+    return post<StaffReview>(path, body);
+  },
 };
 
 export const couponApi = {
@@ -275,12 +346,19 @@ export const couponApi = {
     }),
 };
 
+export const loyaltyApi = {
+  summary: () => get<LoyaltySummary>("/user/loyalty"),
+};
+
 export const shopAppointmentApi = {
   list: (status?: Appointment["status"]) =>
     requestList<Appointment>("/shop/appointments", { query: { status } }),
 
   cancel: (appointmentId: string, reason?: string) =>
     post<Appointment>(`/shop/appointments/${encodeURIComponent(appointmentId)}/cancel`, { reason }),
+
+  complete: (appointmentId: string) =>
+    post<Appointment>(`/shop/appointments/${encodeURIComponent(appointmentId)}/complete`),
 };
 
 export const profileApi = {

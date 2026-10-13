@@ -11,8 +11,8 @@ export function BrandLogo({
 }) {
   return (
     <Image
-      src="/logo.svg"
-      alt="HemenTıraş"
+      src="/hairhub.svg"
+      alt="HairHub"
       width={size}
       height={size}
       className={`shrink-0 object-contain ${className}`}

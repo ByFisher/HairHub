@@ -50,6 +50,10 @@ export function AdminReviewQueue() {
                 <span className="rounded border border-lime-900 bg-lime-950/30 px-2 py-1 text-[11px] text-lime-300">{review.rating} / 5</span>
               </div>
               {review.comment && <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">{review.comment}</p>}
+              {review.photoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={review.photoUrl} alt="Müşteri tarafından paylaşılan yorum fotoğrafı" className="mt-3 max-h-64 rounded-lg object-cover" />
+              )}
               <div className="mt-4 flex justify-end gap-2">
                 {review.status === "pending_approval" && (
                   <button type="button" disabled={approve.isPending} onClick={async () => { if (await approve.run(review.id)) queue.refresh(); }} className="inline-flex items-center gap-1.5 rounded bg-lime-500 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-50">

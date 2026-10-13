@@ -8,7 +8,7 @@ class AppointmentPresenter
 {
     public function present(Appointment $appointment): array
     {
-        $appointment->loadMissing(['services', 'coupon']);
+        $appointment->loadMissing(['services', 'coupon', 'loyaltyReward']);
         $payment = $appointment->payment;
 
         return [
@@ -24,6 +24,7 @@ class AppointmentPresenter
             'basePrice' => $appointment->base_price ?? $appointment->total_price,
             'discountAmount' => $appointment->discount_amount,
             'couponCode' => $appointment->coupon?->code,
+            'loyaltyRewardAmountLimit' => $appointment->loyaltyReward?->amount_limit,
             'services' => $appointment->services->map(fn ($service) => [
                 'id' => (string) $service->id,
                 'name' => $service->pivot->service_name,

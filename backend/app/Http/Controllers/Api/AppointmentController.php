@@ -7,6 +7,7 @@ use App\Exceptions\PaymentGatewayException;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\AppointmentPayment;
+use App\Models\LoyaltyReward;
 use App\Models\Shop;
 use App\Models\ShopService;
 use App\Models\ShopStaff;
@@ -15,9 +16,11 @@ use App\Services\AppointmentCancellationService;
 use App\Services\AppointmentPresenter;
 use App\Services\CouponService;
 use App\Services\FinancialLedger;
+use App\Services\StaffHighScoreService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -72,6 +75,7 @@ class AppointmentController extends Controller
             'startsAt' => ['required', 'date', 'after:now'],
             'note' => ['nullable', 'string', 'max:1000'],
             'couponCode' => ['nullable', 'string', 'max:64'],
+            'loyaltyRewardId' => ['nullable', 'integer'],
             'paymentMethod' => ['sometimes', Rule::in(['card', 'at_shop_card', 'cash'])],
         ]);
         $serviceIds = array_values(array_unique(array_map(
@@ -126,6 +130,27 @@ class AppointmentController extends Controller
                 ],
             )->all());
 
+            if (! empty($data['loyaltyRewardId'])) {
+                abort_if(! empty($data['couponCode']), 422, 'Sadakat ödülü ile indirim kuponu aynı randevuda birlikte kullanılamaz.');
+                $reward = LoyaltyReward::query()
+                    ->whereKey($data['loyaltyRewardId'])
+                    ->where('user_id', $request->user()->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                abort_unless($reward->status === 'available', 409, 'Bu ücretsiz hizmet hakkı artık kullanılamıyor.');
+                $discount = min($basePrice, $reward->amount_limit);
+                $reward->update([
+                    'status' => 'reserved',
+                    'appointment_id' => $appointment->id,
+                    'reserved_at' => now(),
+                ]);
+                $appointment->update([
+                    'loyalty_reward_id' => $reward->id,
+                    'discount_amount' => $discount,
+                    'total_price' => $basePrice - $discount,
+                ]);
+            }
+
             if (! empty($data['couponCode'])) {
                 $quote = $coupons->quote($data['couponCode'], $shop, $basePrice);
                 $discount = $coupons->reserveForAppointment(
@@ -142,22 +167,26 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            if (isset($data['paymentMethod'])) {
-                $isCard = $data['paymentMethod'] === 'card';
-                $provider = $isCard ? (string) config('payments.driver') : 'offline';
+            if (isset($data['paymentMethod']) || $appointment->total_price === 0) {
+                $isCard = ($data['paymentMethod'] ?? null) === 'card';
+                $isZeroTotal = $appointment->total_price === 0;
+                $provider = $isZeroTotal ? 'offline' : ($isCard ? (string) config('payments.driver') : 'offline');
                 $appointment->payment()->create([
                     'provider' => $provider,
-                    'payment_method' => $isCard
-                        ? (config('payments.driver') === 'demo' ? 'demo' : 'iyzico_checkout_form')
-                        : $data['paymentMethod'],
+                    'payment_method' => $isZeroTotal
+                        ? 'zero_total'
+                        : ($isCard
+                            ? (config('payments.driver') === 'demo' ? 'demo' : 'iyzico_checkout_form')
+                            : $data['paymentMethod']),
                     'amount' => $appointment->total_price,
                     'currency' => 'TRY',
-                    'status' => 'pending',
-                    'payment_status' => 'pending',
+                    'status' => $isZeroTotal ? 'paid' : 'pending',
+                    'payment_status' => $isZeroTotal ? 'paid' : 'pending',
                     'user_id' => $request->user()->id,
                     'shop_id' => $shop->id,
                     'discount_amount' => $appointment->discount_amount,
                     'coupon_id' => $appointment->coupon_id,
+                    'paid_at' => $isZeroTotal ? now() : null,
                 ]);
             }
 
@@ -297,6 +326,7 @@ class AppointmentController extends Controller
         $data = $request->validate([
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:2000'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
         $review = DB::transaction(function () use ($request, $appointment, $data): StaffReview {
             $locked = Appointment::query()->whereKey($appointment->id)->lockForUpdate()->firstOrFail();
@@ -307,13 +337,18 @@ class AppointmentController extends Controller
                 'Bu randevu için değerlendirme zaten gönderilmiş.',
             );
 
-            return StaffReview::query()->create([
+            $review = StaffReview::query()->create([
                 'appointment_id' => $locked->id,
                 'staff_id' => $locked->staff_id,
                 'customer_id' => $locked->customer_id,
-                ...$data,
+                'rating' => $data['rating'],
+                'comment' => $data['comment'] ?? null,
+                'photo_path' => $request->file('photo')?->storePublicly('staff-reviews', 'public'),
                 'moderation_status' => 'pending_approval',
             ]);
+            app(StaffHighScoreService::class)->recalculate($review->staff);
+
+            return $review;
         });
 
         return response()->json([
@@ -323,6 +358,7 @@ class AppointmentController extends Controller
             'customerId' => (string) $review->customer_id,
             'rating' => $review->rating,
             'comment' => $review->comment,
+            'photoUrl' => $review->photo_path ? Storage::disk('public')->url($review->photo_path) : null,
             'status' => $review->moderation_status,
             'createdAt' => $review->created_at->toISOString(),
         ], 201);

@@ -7,7 +7,9 @@ use App\Models\Appointment;
 use App\Models\Shop;
 use App\Services\AppointmentCancellationService;
 use App\Services\AppointmentPresenter;
+use App\Services\FinancialLedger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ShopAppointmentController extends Controller
 {
@@ -58,6 +60,52 @@ class ShopAppointmentController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    public function complete(
+        Request $request,
+        Appointment $appointment,
+        FinancialLedger $ledger,
+        AppointmentPresenter $presenter,
+    ) {
+        abort_unless($appointment->shop_id === $this->shop($request)->id, 404);
+
+        $completed = DB::transaction(function () use ($appointment, $ledger): Appointment {
+            $locked = Appointment::query()->whereKey($appointment->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'completed') {
+                return $locked->load(['shop', 'staff', 'service', 'review', 'payment']);
+            }
+
+            abort_unless(in_array($locked->status, ['pending', 'confirmed'], true), 409, 'Yalnızca aktif randevular tamamlanabilir.');
+            abort_if($locked->ends_at->isFuture(), 409, 'Randevu bitiş saati gelmeden tamamlanamaz.');
+
+            $payment = $locked->payment()->lockForUpdate()->first();
+            if ($locked->total_price > 0) {
+                abort_unless($payment, 409, 'Randevunun ödemesi bulunamadı.');
+                if ($payment->provider === 'offline') {
+                    abort_unless(
+                        in_array($payment->payment_method, ['cash', 'at_shop_card'], true)
+                            && in_array($payment->status, ['pending', 'paid'], true),
+                        409,
+                        'Bu randevunun çevrimiçi ödemesi tamamlanmadan randevu kapatılamaz.',
+                    );
+                    if ($payment->status !== 'paid') {
+                        $payment->update(['status' => 'paid', 'paid_at' => now(), 'failure_code' => null]);
+                        $ledger->recordPayment($payment->refresh());
+                    }
+                } else {
+                    abort_unless($payment->status === 'paid', 409, 'Bu randevunun çevrimiçi ödemesi tamamlanmadan randevu kapatılamaz.');
+                }
+            } elseif ($payment && $payment->status !== 'paid') {
+                $payment->update(['status' => 'paid', 'paid_at' => now(), 'failure_code' => null]);
+            }
+
+            $locked->update(['status' => 'completed']);
+
+            return $locked->refresh()->load(['shop', 'staff', 'service', 'review', 'payment']);
+        });
+
+        return response()->json($presenter->present($completed));
     }
 
     private function shop(Request $request): Shop

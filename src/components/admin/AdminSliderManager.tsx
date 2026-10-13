@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Pencil, Power, Trash2 } from "lucide-react";
 import { adminApi } from "@/lib/services";
 import { ApiError } from "@/lib/api-client";
-import { FormCheckboxField, FormField, FormFieldset, FormInput, FormTextarea } from "@/components/ui/form";
-import type { AdminSlider } from "@/types/api";
+import { FormCheckboxField, FormField, FormFieldset, FormInput, FormListbox, FormTextarea } from "@/components/ui/form";
+import type { AdminSlider, GenderTarget } from "@/types/api";
 
 type Editor = {
   id: string | null;
@@ -14,6 +14,7 @@ type Editor = {
   linkUrl: string;
   linkLabel: string;
   isActive: boolean;
+  targetGender: GenderTarget;
   image?: File;
 };
 
@@ -24,6 +25,7 @@ const emptyEditor: Editor = {
   linkUrl: "",
   linkLabel: "",
   isActive: false,
+  targetGender: "unisex",
 };
 
 function errorMessage(reason: unknown) {
@@ -68,6 +70,7 @@ export function AdminSliderManager() {
       linkUrl: slide.linkUrl ?? "",
       linkLabel: slide.linkLabel ?? "",
       isActive: slide.isActive,
+      targetGender: slide.targetGender,
     });
     setNotice("");
   };
@@ -83,6 +86,7 @@ export function AdminSliderManager() {
     body.set("link_url", editor.linkUrl.trim());
     body.set("link_label", editor.linkLabel.trim());
     body.set("is_active", editor.isActive ? "1" : "0");
+    body.set("target_gender", editor.targetGender);
     if (editor.image) body.set("image", editor.image);
 
     try {
@@ -163,12 +167,31 @@ export function AdminSliderManager() {
                 <h3 className="truncate text-xs font-medium text-zinc-100">{slide.title}</h3>
                 <span className={`rounded border px-1.5 py-0.5 text-[9px] ${slide.isActive ? "border-zinc-600 text-zinc-200" : "border-zinc-800 text-zinc-500"}`}>{slide.isActive ? "Aktif" : "Pasif"}</span>
                 <span className="text-[10px] text-zinc-600">Sıra {slide.sortOrder + 1}</span>
+                <span className="rounded border border-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-400">
+                  {slide.targetGender === "male" ? "Erkek" : slide.targetGender === "female" ? "Kadın" : "Unisex"}
+                </span>
               </div>
               {slide.description && <p className="mt-1 line-clamp-2 text-[11px] text-zinc-500">{slide.description}</p>}
               {slide.linkUrl && <p className="mt-1 truncate text-[10px] text-zinc-600">{slide.linkUrl}</p>}
-              <div className="mt-2 flex flex-wrap gap-3">
-                <button type="button" onClick={() => void toggleActive(slide)} className="text-[10px] text-zinc-300 underline">{slide.isActive ? "Pasife al" : "Aktifleştir"}</button>
-                <button type="button" onClick={() => edit(slide)} className="text-[10px] text-zinc-300 underline">Düzenle</button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void toggleActive(slide)}
+                  className={`slider-action-button ${
+                    slide.isActive ? "slider-action-button--deactivate" : "slider-action-button--activate"
+                  }`}
+                >
+                  <Power size={13} aria-hidden="true" />
+                  {slide.isActive ? "Pasife al" : "Aktifleştir"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => edit(slide)}
+                  className="slider-action-button slider-action-button--edit"
+                >
+                  <Pencil size={13} aria-hidden="true" />
+                  Düzenle
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-1 sm:flex-col">
@@ -201,6 +224,18 @@ export function AdminSliderManager() {
           <FormField label="Buton metni" description="Yönlendirme butonunda görünecek metin.">
             <FormInput maxLength={80} value={editor.linkLabel} onChange={(event) => setEditor((current) => ({ ...current, linkLabel: event.target.value }))} placeholder="Salonları keşfet" />
           </FormField>
+          <FormListbox
+            label="Banner hedef kitlesi"
+            description="Bannerın hangi modlarda gösterileceğini seçin."
+            value={editor.targetGender}
+            onChange={(targetGender) => setEditor((current) => ({ ...current, targetGender: targetGender || "unisex" }))}
+            clearable={false}
+            options={[
+              { value: "male", label: "Erkek" },
+              { value: "female", label: "Kadın" },
+              { value: "unisex", label: "Her iki mod" },
+            ]}
+          />
           <FormCheckboxField label="Aktif banner" description="Aktif bannerlar ana sayfada gösterilir." checked={editor.isActive} onChange={(isActive) => setEditor((current) => ({ ...current, isActive }))} />
           <div className="flex justify-end gap-2">
             {editor.id && <button type="button" onClick={() => setEditor(emptyEditor)} className="rounded-md border border-zinc-800 px-3 py-2 text-xs text-zinc-300">Vazgeç</button>}

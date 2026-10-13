@@ -3,9 +3,10 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ImagePlus, MapPin, Save, Upload } from "lucide-react";
-import { createShopContentSubmission, getShopContentSubmissions, getShopProfile, uploadShopContentImage } from "@/lib/shop-management-api";
+import { createShopContentSubmission, getShopContentSubmissions, getShopProfile, updateShopGender, uploadShopContentImage } from "@/lib/shop-management-api";
 import type { ShopContentSubmission } from "@/types/portal";
-import { FormField, FormFieldset, FormInput, FormTextarea } from "@/components/ui/form";
+import type { GenderTarget } from "@/types/api";
+import { FormField, FormFieldset, FormInput, FormListbox, FormTextarea } from "@/components/ui/form";
 
 type ImageKind = "profile_image" | "cover_image";
 
@@ -14,6 +15,9 @@ export function ShopProfilePanel() {
   const [coverImage, setCoverImage] = useState("");
   const [submissions, setSubmissions] = useState<ShopContentSubmission[]>([]);
   const [form, setForm] = useState({ name: "", phone: "", address: "", description: "" });
+  const [genderType, setGenderType] = useState<GenderTarget>("unisex");
+  const [savingGender, setSavingGender] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -25,6 +29,8 @@ export function ShopProfilePanel() {
         setSubmissions(result);
         setProfileImage(profile.profileImageUrl ?? "");
         setCoverImage(profile.coverImageUrl ?? "");
+        setGenderType(profile.genderType);
+        setProfileLoaded(true);
         setForm({
           name: profile.name,
           phone: profile.phone ?? "",
@@ -78,6 +84,22 @@ export function ShopProfilePanel() {
 
   const pending = (kind: ImageKind) => submissions.find((item) => item.kind === kind && item.approvalStatus === "pending_approval");
 
+  const saveGenderType = async () => {
+    if (!profileLoaded) return;
+    setSavingGender(true);
+    setError("");
+    setNotice("");
+    try {
+      const profile = await updateShopGender(genderType);
+      setGenderType(profile.genderType);
+      setNotice("İşletme hedef kitlesi güncellendi.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "İşletme hedef kitlesi güncellenemedi.");
+    } finally {
+      setSavingGender(false);
+    }
+  };
+
   const imageUpload = (kind: ImageKind, preview: string, label: string) => (
     <FormField label={label} description={kind === "profile_image" ? "Kare profil veya logo görseli yükleyin." : "Dükkanınız için kapak görseli yükleyin."} className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
       <label className="cursor-pointer">
@@ -103,6 +125,21 @@ export function ShopProfilePanel() {
       <FormFieldset className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
         <h2 className="text-sm font-medium">Dükkan bilgileri</h2>
+        <FormListbox
+          label="Hizmet verdiğiniz kitle"
+          description="İşletmeniz seçilen modda ve tüm müşterilere açık salonlarla listelenir."
+          value={genderType}
+          onChange={(value) => setGenderType(value || "unisex")}
+          clearable={false}
+          options={[
+            { value: "male", label: "Erkek" },
+            { value: "female", label: "Kadın" },
+            { value: "unisex", label: "Herkes (Unisex)" },
+          ]}
+        />
+        <button type="button" disabled={savingGender || !profileLoaded} onClick={() => void saveGenderType()} className="rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-200 disabled:opacity-50">
+          {!profileLoaded ? "Profil yükleniyor..." : savingGender ? "Kaydediliyor..." : "Hedef kitleyi kaydet"}
+        </button>
         <FormField label="Dükkan adı" description="Müşterilerin dükkanınızı tanıyacağı adı girin."><FormInput required maxLength={120} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></FormField>
         <FormField label="Telefon" description="Müşterilerin dükkanla iletişim kurabileceği telefon numarası."><FormInput required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></FormField>
         <FormField label="Adres" description="Dükkanın müşteriler tarafından ziyaret edilebilecek açık adresini yazın."><FormTextarea required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></FormField>

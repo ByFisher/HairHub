@@ -9,6 +9,7 @@ use App\Models\ShopService;
 use App\Models\ShopStaff;
 use App\Models\StaffReview;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ShopController extends Controller
 {
@@ -22,6 +23,27 @@ class ShopController extends Controller
             'phone' => $shop->phone,
             'address' => trim($shop->street.', '.$shop->district.', '.$shop->city, ', '),
             'description' => $shop->description,
+            'genderType' => $shop->gender_type,
+            'profileImageUrl' => $shop->profile_image_url,
+            'coverImageUrl' => $shop->cover_image_url,
+        ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $data = $request->validate([
+            'genderType' => ['required', Rule::in(['male', 'female', 'unisex'])],
+        ]);
+        $shop = $this->shop($request);
+        $shop->update(['gender_type' => $data['genderType']]);
+
+        return response()->json([
+            'id' => (string) $shop->id,
+            'name' => $shop->name,
+            'phone' => $shop->phone,
+            'address' => trim($shop->street.', '.$shop->district.', '.$shop->city, ', '),
+            'description' => $shop->description,
+            'genderType' => $shop->gender_type,
             'profileImageUrl' => $shop->profile_image_url,
             'coverImageUrl' => $shop->cover_image_url,
         ]);
@@ -141,6 +163,7 @@ class ShopController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'durationMinutes' => ['required', 'integer', 'min:5', 'max:600'],
             'price' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'targetGender' => ['sometimes', Rule::in(['male', 'female', 'unisex'])],
             'status' => ['sometimes', 'in:active,inactive'],
         ]);
         $service = $this->shop($request)->services()->create([
@@ -149,6 +172,7 @@ class ShopController extends Controller
             'description' => $data['description'] ?? '',
             'duration_minutes' => $data['durationMinutes'],
             'price' => $data['price'],
+            'target_gender' => $data['targetGender'] ?? 'unisex',
             'is_active' => ($data['status'] ?? 'active') === 'active',
         ]);
 
@@ -164,6 +188,7 @@ class ShopController extends Controller
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'durationMinutes' => ['sometimes', 'required', 'integer', 'min:5', 'max:600'],
             'price' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
+            'targetGender' => ['sometimes', Rule::in(['male', 'female', 'unisex'])],
             'status' => ['sometimes', 'in:active,inactive'],
         ]);
         $fields = [
@@ -172,6 +197,7 @@ class ShopController extends Controller
             'description' => 'description',
             'durationMinutes' => 'duration_minutes',
             'price' => 'price',
+            'targetGender' => 'target_gender',
         ];
         $updates = [];
         foreach ($fields as $input => $column) {
@@ -199,7 +225,7 @@ class ShopController extends Controller
         $data = $request->validate([
             'firstName' => ['required', 'string', 'max:80'],
             'lastName' => ['required', 'string', 'max:80'],
-            'title' => ['required', 'in:Berber,Kalfa,Çırak'],
+            'title' => ['required', 'in:Berber,Kuaför,Kalfa,Çırak'],
             'experienceYears' => ['required', 'integer', 'min:0', 'max:80'],
             'biography' => ['nullable', 'string', 'max:3000'],
             'schedule' => ['required', 'array'],
@@ -242,7 +268,7 @@ class ShopController extends Controller
         $data = $request->validate([
             'firstName' => ['sometimes', 'required', 'string', 'max:80'],
             'lastName' => ['sometimes', 'required', 'string', 'max:80'],
-            'title' => ['sometimes', 'required', 'in:Berber,Kalfa,Çırak'],
+            'title' => ['sometimes', 'required', 'in:Berber,Kuaför,Kalfa,Çırak'],
             'experienceYears' => ['sometimes', 'required', 'integer', 'min:0', 'max:80'],
             'biography' => ['sometimes', 'nullable', 'string', 'max:3000'],
             'schedule' => ['sometimes', 'required', 'array'],
@@ -330,6 +356,7 @@ class ShopController extends Controller
             'shopId' => (string) $service->shop_id,
             'name' => $service->name,
             'category' => $service->category,
+            'targetGender' => $service->target_gender,
             'description' => $service->description,
             'durationMinutes' => $service->duration_minutes,
             'price' => $service->price,
@@ -358,6 +385,8 @@ class ShopController extends Controller
             'averageRating' => count($ratings) ? array_sum($ratings) / count($ratings) : 0,
             'ownerRating' => (float) $member->owner_rating,
             'reviewCount' => count($ratings),
+            'highScore' => (float) $member->high_score,
+            'totalPhotoReviews' => (int) $member->total_photo_reviews,
             'completedAppointmentCount' => $member->appointments()->where('status', 'completed')->count(),
             'schedule' => $member->working_hours ?? [],
             'workingHours' => $member->working_hours ?? [],

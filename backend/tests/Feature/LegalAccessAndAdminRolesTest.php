@@ -10,7 +10,9 @@ use App\Models\SponsorApprovalRequest;
 use App\Models\StaffReview;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -201,6 +203,7 @@ class LegalAccessAndAdminRolesTest extends TestCase
 
     public function test_new_reviews_are_held_for_moderation_and_only_approved_reviews_are_public(): void
     {
+        Storage::fake('public');
         $moderator = $this->user('moderator');
         $owner = $this->user('shop_owner');
         $customer = $this->user('customer');
@@ -222,15 +225,29 @@ class LegalAccessAndAdminRolesTest extends TestCase
             'title' => 'Berber',
             'approval_status' => 'approved',
         ]);
+        ShopStaff::query()->create([
+            'shop_id' => $shop->id,
+            'first_name' => 'Veli',
+            'last_name' => 'Usta',
+            'title' => 'Berber',
+            'approval_status' => 'approved',
+        ]);
         $appointment = $this->appointment($customer, $shop, $staff);
         $reviewResponse = $this->actingAs($customer)
             ->postJson("/api/v1/appointments/{$appointment->id}/review", [
                 'rating' => 5,
                 'comment' => 'Bekleyen yorum',
+                'photo' => UploadedFile::fake()->createWithContent(
+                    'haircut.png',
+                    base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lX8AAAAASUVORK5CYII='),
+                ),
             ])
             ->assertCreated()
             ->assertJsonPath('status', 'pending_approval');
         $review = StaffReview::query()->findOrFail($reviewResponse->json('id'));
+        $this->assertSame(0.0, (float) $staff->fresh()->high_score);
+        $this->assertSame(0, $staff->fresh()->total_photo_reviews);
+        Storage::disk('public')->assertExists($review->photo_path);
         $this->actingAs($customer)
             ->postJson("/api/v1/appointments/{$appointment->id}/review", ['rating' => 5])
             ->assertConflict();
@@ -241,8 +258,22 @@ class LegalAccessAndAdminRolesTest extends TestCase
             ->assertOk()->assertJsonPath('data.0.id', (string) $review->id);
         $this->actingAs($moderator)->patchJson("/api/v1/admin/reviews/{$review->id}/approve")
             ->assertOk()->assertJsonPath('status', 'approved');
+        $this->assertSame(120.0, (float) $staff->fresh()->high_score);
+        $this->assertSame(1, $staff->fresh()->total_photo_reviews);
         $this->getJson("/api/v1/shops/{$shop->id}/staff/{$staff->id}/reviews")
-            ->assertOk()->assertJsonPath('data.0.comment', 'Bekleyen yorum');
+            ->assertOk()
+            ->assertJsonPath('data.0.comment', 'Bekleyen yorum')
+            ->assertJsonPath('data.0.photoUrl', Storage::disk('public')->url($review->photo_path));
+        $this->getJson("/api/v1/shops/{$shop->id}/staff?sort=high_score")
+            ->assertOk()
+            ->assertJsonPath('0.id', (string) $staff->id)
+            ->assertJsonPath('0.highScore', 120)
+            ->assertJsonPath('0.totalPhotoReviews', 1);
+
+        $this->actingAs($moderator)->deleteJson("/api/v1/admin/reviews/{$review->id}")->assertOk();
+        $this->assertSame(0.0, (float) $staff->fresh()->high_score);
+        $this->assertSame(0, $staff->fresh()->total_photo_reviews);
+        Storage::disk('public')->assertMissing($review->photo_path);
     }
 
     private function user(string $role): User

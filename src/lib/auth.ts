@@ -1,5 +1,5 @@
 import { get, post } from "@/lib/api-client";
-import type { User } from "@/types/api";
+import type { GenderTarget, User } from "@/types/api";
 
 export async function login(credentials: { email: string; password: string }) {
   const user = await post<User>("/auth/login", credentials);
@@ -9,6 +9,16 @@ export async function login(credentials: { email: string; password: string }) {
   }
   return user;
 }
+
+export const requestPasswordReset = (email: string) =>
+  post<{ message: string }>("/auth/forgot-password", { email });
+
+export const resetPassword = (details: {
+  email: string;
+  token: string;
+  password: string;
+  password_confirmation: string;
+}) => post<{ message: string }>("/auth/reset-password", details);
 
 export interface RegistrationInput {
   name: string;
@@ -42,6 +52,11 @@ export interface ShopOwnerApplicationInput {
   phone: string;
   city: string;
   district: string;
+  genderType: GenderTarget;
+  address: string;
+  taxNumber: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ShopOwnerApplicationResult {

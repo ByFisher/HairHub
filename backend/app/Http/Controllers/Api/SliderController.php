@@ -8,15 +8,21 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SliderController extends Controller
 {
-    public function publicIndex()
+    public function publicIndex(Request $request)
     {
+        $filters = $request->validate([
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+        ]);
+
         return response()->json(
             Slider::query()
                 ->where('is_active', true)
+                ->when(isset($filters['gender']), fn ($query) => $query->whereIn('target_gender', [$filters['gender'], 'unisex']))
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get()
@@ -47,6 +53,7 @@ class SliderController extends Controller
             'link_label' => ['nullable', 'string', 'max:80'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'is_active' => ['required', 'boolean'],
+            'target_gender' => ['sometimes', Rule::in(['male', 'female', 'unisex'])],
         ]);
         $this->validateLink($data['link_url'] ?? null);
 
@@ -73,6 +80,7 @@ class SliderController extends Controller
             'link_label' => ['sometimes', 'nullable', 'string', 'max:80'],
             'sort_order' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
             'is_active' => ['sometimes', 'required', 'boolean'],
+            'target_gender' => ['sometimes', Rule::in(['male', 'female', 'unisex'])],
         ]);
         $this->validateLink($data['link_url'] ?? null);
 
@@ -148,6 +156,7 @@ class SliderController extends Controller
             'imageUrl' => Storage::disk('public')->url($slider->image_path),
             'linkUrl' => $slider->link_url,
             'linkLabel' => $slider->link_label,
+            'targetGender' => $slider->target_gender,
         ];
     }
 

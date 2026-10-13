@@ -10,12 +10,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'owner_user_id', 'slug', 'name', 'description', 'status', 'is_approved', 'city', 'district',
     'street', 'phone', 'cover_image_url', 'profile_image_url', 'working_hours', 'commission_rate', 'gender_type',
+    'tax_number', 'latitude', 'longitude',
 ])]
 class Shop extends Model
 {
     protected function casts(): array
     {
-        return ['working_hours' => 'array', 'commission_rate' => 'float', 'is_approved' => 'boolean'];
+        return [
+            'working_hours' => 'array',
+            'commission_rate' => 'float',
+            'is_approved' => 'boolean',
+            'latitude' => 'float',
+            'longitude' => 'float',
+        ];
     }
 
     public function owner(): BelongsTo

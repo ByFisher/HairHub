@@ -9,6 +9,7 @@ import type { Shop } from "@/types/api";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ShopGrid } from "@/components/user/ShopGrid";
 import { FormField, FormFieldset, FormInput, FormListbox } from "@/components/ui/form";
+import { useGender } from "@/components/providers/gender-provider";
 
 type ShopSort = NonNullable<ShopSearchFilters["sort"]>;
 const SORT_OPTIONS: { value: ShopSort; label: string }[] = [
@@ -27,10 +28,12 @@ function ShopSearchContent({
   initialDistrict: string;
   authError: string;
 }) {
+  const { gender } = useGender();
   const [draft, setDraft] = useState({ search: "", city: initialCity, district: initialDistrict, service: "", minRating: "" });
   const [filters, setFilters] = useState<ShopSearchFilters>({
     sort: "rating_desc",
     perPage: 24,
+    gender: gender === "all" ? undefined : gender,
     city: initialCity || undefined,
     district: initialDistrict || undefined,
   });
@@ -46,6 +49,7 @@ function ShopSearchContent({
       city: filters.city,
       district: filters.district,
       service: filters.service,
+      gender,
       min_rating: filters.minRating ? Number(filters.minRating) : undefined,
       sort,
       per_page: filters.perPage,
@@ -57,7 +61,10 @@ function ShopSearchContent({
     ["/locations/districts", draft.city],
     { list: true, enabled: Boolean(draft.city), query: { city: draft.city } },
   );
-  const { data: services = [] } = useApiQuery<string[]>(["/shops/meta/services"], { list: true });
+  const { data: services = [] } = useApiQuery<string[]>(["/shops/meta/services", gender], {
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
 
   const changeCity = (city: string) => {
     setDraft((current) => ({ ...current, city, district: "" }));
@@ -85,14 +92,14 @@ function ShopSearchContent({
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Dükkan Ara</h1>
-        <p className="mt-1 text-xs text-zinc-500">Onaylanmış dükkanlar; puan, konum ve hizmete göre filtrelenebilir.</p>
+        <h1 className="text-lg font-semibold tracking-tight">Salon Ara</h1>
+        <p className="mt-1 text-xs text-zinc-500">Onaylanmış salonları puan, konum ve hizmete göre filtreleyin.</p>
       </div>
 
       <form onSubmit={applyFilters} className="w-full">
-        <FormFieldset className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3 sm:grid-cols-2 xl:grid-cols-6">
+        <FormFieldset className="shop-search-filter-controls grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950 p-3 sm:grid-cols-2 xl:grid-cols-6">
           <div className="min-w-0 sm:col-span-2 xl:col-span-1">
-            <FormField label="Berber / dükkan adı" description="İşletme adına göre arama yapın.">
+            <FormField label="Salon veya işletme adı" description="İşletme adına göre arama yapın.">
               <FormInput
                 value={draft.search}
                 onChange={(event) => setDraft({ ...draft, search: event.target.value })}
@@ -134,9 +141,9 @@ function ShopSearchContent({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-zinc-500">
-          {isLoading ? "Yükleniyor…" : `${data?.length ?? 0} dükkan listelendi`}
+          {isLoading ? "Yükleniyor…" : `${data?.length ?? 0} salon listelendi`}
         </p>
-        <div className="w-full sm:max-w-[235px]">
+        <div className="shop-search-sort-control w-full sm:max-w-[235px]">
           <FormListbox<ShopSort> label="Sıralama" description="Sonuçların sıralama ölçütünü seçin." value={sort ?? "rating_desc"} onChange={(value) => setSort(value || "rating_desc")} options={SORT_OPTIONS} className="flex items-center gap-2 text-xs text-zinc-500" />
         </div>
       </div>
@@ -149,11 +156,12 @@ function ShopSearchContent({
 
 export function ShopSearch() {
   const { user, status, error } = useAuth();
+  const { gender } = useGender();
   if (status === "loading") return <SkeletonCards />;
 
   const city = status === "authenticated" && user?.role === "customer" ? user.city ?? "" : "";
   const district = city && status === "authenticated" && user?.role === "customer" ? user.district ?? "" : "";
-  const key = `${user?.id ?? "guest"}:${city}:${district}`;
+  const key = `${user?.id ?? "guest"}:${city}:${district}:${gender}`;
 
   return (
     <ShopSearchContent

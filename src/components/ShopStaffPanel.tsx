@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Clock3, Plus, Save, Star, UserRound, X } from "lucide-react";
+import { CalendarDays, Clock3, Flame, Plus, Save, Star, UserRound, X } from "lucide-react";
 import { createShopStaff, getShopStaff, updateShopStaff, uploadShopContentImage } from "@/lib/shop-management-api";
 import type { ShopStaffMember, StaffSkill, WeeklyWorkDay } from "@/types/portal";
 import { FormCheckboxField, FormField, FormFieldset, FormInput, FormListbox, FormTextarea } from "@/components/ui/form";
@@ -19,7 +19,7 @@ export function ShopStaffPanel() {
   const [savingId, setSavingId] = useState("");
   const [photo, setPhoto] = useState<File | undefined>();
   const [profilePhoto, setProfilePhoto] = useState<File | undefined>();
-  const [form, setForm] = useState({ firstName: "", lastName: "", title: "Berber" as ShopStaffMember["title"], experienceYears: 0, biography: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", title: "Kuaför" as ShopStaffMember["title"], experienceYears: 0, biography: "" });
 
   useEffect(() => {
     let current = true;
@@ -112,7 +112,7 @@ export function ShopStaffPanel() {
       setStaff((current) => [created, ...current]);
       setModalOpen(false);
       setPhoto(undefined);
-      setForm({ firstName: "", lastName: "", title: "Berber", experienceYears: 0, biography: "" });
+      setForm({ firstName: "", lastName: "", title: "Kuaför", experienceYears: 0, biography: "" });
       setNotice("Personel profili admin onayına gönderildi. Müşteri tarafında onaylanana kadar görünmez.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Personel eklenemedi.");
@@ -159,10 +159,11 @@ export function ShopStaffPanel() {
           <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-800 bg-zinc-900 text-zinc-500">{member.photoUrl ? <Image src={member.photoUrl} alt={`${member.firstName} ${member.lastName}`} fill unoptimized sizes="48px" className="object-cover" /> : <UserRound size={20} />}</div>
           <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-sm font-medium text-zinc-100">{member.firstName} {member.lastName}</h3>{member.approvalStatus === "pending_approval" && <span className="rounded border border-amber-800 bg-amber-950/50 px-1.5 py-0.5 text-[9px] text-amber-200">⏳ Admin Onayı Bekliyor</span>}{member.approvalStatus === "rejected" && <span className="rounded border border-rose-900 px-1.5 py-0.5 text-[9px] text-rose-300">Reddedildi</span>}</div><p className="mt-1 text-xs text-zinc-500">{member.title} · {member.experienceYears} yıl deneyim</p></div>
           </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 border-y border-zinc-800 py-3 text-center">
+        <div className="mt-4 grid grid-cols-4 gap-2 border-y border-zinc-800 py-3 text-center">
           <div><p className="flex items-center justify-center gap-1 text-sm font-semibold text-amber-300"><Star size={13} fill="currentColor" />{customerAverage(member)}</p><p className="mt-1 text-[9px] text-zinc-600">Ortalama puan</p></div>
           <div><p className="text-sm font-semibold text-zinc-200">{customerAverage(member)}</p><p className="mt-1 text-[9px] text-zinc-600">Müşteri puanı · {member.customerRatings.length} yorum</p></div>
           <div><p className="text-sm font-semibold text-zinc-200">{member.completedAppointmentCount}</p><p className="mt-1 text-[9px] text-zinc-600">Tamamlanan randevu</p></div>
+          <div><p className="flex items-center justify-center gap-1 text-sm font-semibold text-orange-300"><Flame size={13} />{Math.round(member.highScore)}</p><p className="mt-1 text-[9px] text-zinc-600">High Puan</p></div>
         </div>
         <p className="mt-3 line-clamp-2 min-h-8 text-xs leading-relaxed text-zinc-500">{member.biography || "Henüz biyografi eklenmedi."}</p>
         {member.pendingPhotoUrl && <p className="mt-2 text-[10px] text-amber-300">⏳ Yeni profil fotoğrafı admin onayı bekliyor</p>}
@@ -182,11 +183,11 @@ export function ShopStaffPanel() {
             value={selected.title}
             clearable={false}
             onChange={(value) => {
-              if (value === "Berber" || value === "Kalfa" || value === "Çırak") {
+              if (value === "Berber" || value === "Kuaför" || value === "Kalfa" || value === "Çırak") {
                 setStaff((current) => current.map((member) => member.id === selected.id ? { ...member, title: value } : member));
               }
             }}
-            options={[{ value: "Berber", label: "Berber" }, { value: "Kalfa", label: "Kalfa" }, { value: "Çırak", label: "Çırak" }]}
+            options={[{ value: "Kuaför", label: "Kuaför" }, { value: "Berber", label: "Berber" }, { value: "Kalfa", label: "Kalfa" }, { value: "Çırak", label: "Çırak" }]}
           />
           <FormField label="Deneyim yılı" description="Personelin mesleki deneyim süresini girin."><FormInput type="number" min={0} max={60} step={1} value={selected.experienceYears} onChange={(event) => setStaff((current) => current.map((member) => member.id === selected.id ? { ...member, experienceYears: event.target.value === "" ? 0 : Number(event.target.value) } : member))} className="h-9 text-xs" /></FormField>
           <FormField label="Biyografi / uzmanlık" description="Personelin uzmanlıklarını ve mesleki geçmişini açıklayın." className="sm:col-span-2"><FormTextarea maxLength={1000} value={selected.biography} onChange={(event) => setStaff((current) => current.map((member) => member.id === selected.id ? { ...member, biography: event.target.value } : member))} className="text-xs" /></FormField>
@@ -222,7 +223,7 @@ export function ShopStaffPanel() {
             <FormField label="Soyisim" description="Personelin soyadını girin."><FormInput required maxLength={80} value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} className="h-9" /></FormField>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <FormListbox label="Unvan" description="Personelin işletmedeki görevini seçin." value={form.title} onChange={(title) => setForm({ ...form, title: title || "Berber" })} options={[{ value: "Berber", label: "Berber" }, { value: "Kalfa", label: "Kalfa" }, { value: "Çırak", label: "Çırak" }]} clearable={false} />
+            <FormListbox label="Unvan" description="Personelin işletmedeki görevini seçin." value={form.title} onChange={(title) => setForm({ ...form, title: title || "Kuaför" })} options={[{ value: "Kuaför", label: "Kuaför" }, { value: "Berber", label: "Berber" }, { value: "Kalfa", label: "Kalfa" }, { value: "Çırak", label: "Çırak" }]} clearable={false} />
             <FormField label="Deneyim yılı" description="Tamamlanmış mesleki deneyim yılı."><FormInput required min={0} max={60} type="number" value={form.experienceYears} onChange={(event) => setForm({ ...form, experienceYears: Number(event.target.value) })} className="h-9" /></FormField>
           </div>
           <FormField label="Profil fotoğrafı" description="Fotoğraf admin onayına gönderilir."><FormInput type="file" accept="image/*" onChange={(event) => setPhoto(event.target.files?.[0])} className="text-xs file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:text-zinc-200" /></FormField>

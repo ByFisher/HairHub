@@ -60,7 +60,7 @@ export function ShopCard({
             </span>
           )}
           {onFavorite && (
-            <div className="pointer-events-auto absolute right-3 top-3">
+            <div className="pointer-events-auto absolute right-3 top-3 z-10">
               <FavoriteButton isFavorite={isFavorite} isPending={favoritePending} onClick={onFavorite} />
             </div>
           )}

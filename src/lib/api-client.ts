@@ -9,9 +9,12 @@ function apiBaseUrl() {
 
   const apiUrl = new URL(CONFIGURED_API_URL);
   const appHost = window.location.hostname;
-  if (appHost === "localhost" || appHost === "127.0.0.1") {
+  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
+
+  if (localHosts.has(appHost) && !localHosts.has(apiUrl.hostname)) {
     apiUrl.hostname = appHost;
   }
+
   return apiUrl.toString().replace(/\/+$/, "");
 }
 

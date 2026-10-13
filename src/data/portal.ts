@@ -47,7 +47,7 @@ export const NAVIGATION: Record<PortalRole, PortalNavGroup[]> = {
       { label: "Bekleyen Dükkan Onayları", href: "/admin/pending-shops", icon: ShieldAlert, allowedRoles: ["super_admin", "admin"] },
       { label: "Fotoğraf & Personel Onayları", href: "/admin/shop-approvals", icon: ShieldAlert, allowedRoles: ["super_admin", "admin", "moderator"] },
       { label: "Yorum Moderasyonu", href: "/admin/review-moderation", icon: Star, allowedRoles: ["super_admin", "admin", "moderator"] },
-      { label: "Kullanıcılar & Berberler", href: "/admin/users", icon: Users, allowedRoles: ["super_admin", "admin"] },
+      { label: "Kullanıcılar, Kuaförler & Berberler", href: "/admin/users", icon: Users, allowedRoles: ["super_admin", "admin"] },
       { label: "Yönetici ve Moderatörler", href: "/admin/administrators", icon: FilePlus2, allowedRoles: ["super_admin"] },
       { label: "Kupon Yönetimi", href: "/admin/coupons", icon: BadgePercent, allowedRoles: ["super_admin"] },
       { label: "Sponsor Onay Kuyruğu", href: "/admin/sponsor-approvals", icon: Megaphone, allowedRoles: ["super_admin", "admin"] },
@@ -62,7 +62,7 @@ export const NAVIGATION: Record<PortalRole, PortalNavGroup[]> = {
     { label: "Güvenlik & Sistem", links: [
       { label: "Yasal Erişim Kayıtları", href: "/admin/legal-logs", icon: Fingerprint, allowedRoles: ["super_admin"] },
       { label: "Denetim Günlüğü", href: "/admin/audit-logs", icon: ShieldAlert, allowedRoles: ["super_admin"] },
-      { label: "Sistem Ayarları", href: "/admin/settings", icon: SlidersHorizontal, allowedRoles: ["super_admin"] },
+      { label: "SMTP / E-posta Ayarları", href: "/admin/settings", icon: SlidersHorizontal, allowedRoles: ["super_admin"] },
     ] },
   ],
   shop: [

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Check, CreditCard, Store, Trash2 } from "lucide-react";
 import { Description, Label, Radio, RadioGroup } from "@headlessui/react";
 import { appointmentApi, couponApi } from "@/lib/services";
@@ -13,11 +13,13 @@ import type {
   AppointmentSlot,
   CouponQuote,
   CreateAppointmentInput,
+  LoyaltySummary,
   Service,
   Shop,
   Staff,
 } from "@/types/api";
 import { FormField, FormInput, FormTextarea } from "@/components/ui/form";
+import { useGender } from "@/components/providers/gender-provider";
 
 type PaymentMethod = "card" | "at_shop_card" | "cash";
 
@@ -69,16 +71,30 @@ export function CheckoutFlow({
   const [couponCode, setCouponCode] = useState("");
   const [couponQuote, setCouponQuote] = useState<CouponQuote | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState("");
+  const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState("");
   const [preInformationAccepted, setPreInformationAccepted] = useState(false);
   const [distanceSalesAccepted, setDistanceSalesAccepted] = useState(false);
   const [note, setNote] = useState("");
   const [identityNumber, setIdentityNumber] = useState("");
   const [registrationAddress, setRegistrationAddress] = useState("");
   const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null);
+  const { gender } = useGender();
+  const previousGender = useRef(gender);
+
+  useEffect(() => {
+    if (previousGender.current === gender) return;
+    previousGender.current = gender;
+    setServiceIds([]);
+    setStartsAt("");
+  }, [gender]);
 
   const shop = useApiQuery<Shop>(["/shops/:id", shopId]);
+  const loyalty = useApiQuery<LoyaltySummary>(["/user/loyalty"]);
   const staffQuery = useApiQuery<Staff[]>(["/shops/:id/staff", shopId], { list: true });
-  const servicesQuery = useApiQuery<Service[]>(["/shops/:id/services", shopId], { list: true });
+  const servicesQuery = useApiQuery<Service[]>(["/shops/:id/services", shopId, gender], {
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
   const slotsQuery = useApiQuery<AppointmentSlot[]>(
     ["/shops/:id/staff/:staffId/availability", shopId, staffId, serviceIds.join(","), date],
     {
@@ -106,6 +122,12 @@ export function CheckoutFlow({
   );
   const basePrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
   const totalDuration = selectedServices.reduce((sum, service) => sum + service.durationMinutes, 0);
+  const selectedLoyaltyReward = loyalty.data?.availableRewards.find((reward) => reward.id === selectedLoyaltyRewardId);
+  const loyaltyDiscount = selectedLoyaltyReward ? Math.min(basePrice, selectedLoyaltyReward.amountLimit) : 0;
+  const displayedDiscount = selectedLoyaltyReward ? loyaltyDiscount : couponQuote?.discountAmount ?? 0;
+  const displayedTotalPrice = selectedLoyaltyReward
+    ? Math.max(0, basePrice - loyaltyDiscount)
+    : couponQuote?.totalPrice ?? basePrice;
   const selectedSlotIsAvailable = (slotsQuery.data ?? []).some((slot) => slot.startsAt === startsAt && slot.isAvailable);
   const hasInvalidSelection = !shopId || serviceIds.length === 0
     || (servicesQuery.data !== undefined && selectedServices.length !== serviceIds.length);
@@ -130,6 +152,7 @@ export function CheckoutFlow({
   };
 
   const applyCoupon = async () => {
+    if (selectedLoyaltyRewardId) return;
     const quote = await validateCoupon.run({
       shopId,
       code: couponCode.trim(),
@@ -151,10 +174,16 @@ export function CheckoutFlow({
         startsAt,
         note: note.trim() || undefined,
         couponCode: appliedCoupon || undefined,
+        loyaltyRewardId: selectedLoyaltyRewardId || undefined,
         paymentMethod,
       }) ?? null;
       if (!appointment) return;
       setCreatedAppointment(appointment);
+    }
+
+    if (appointment.totalPrice === 0) {
+      router.push(`/my-appointments/${encodeURIComponent(appointment.id)}?created=1`);
+      return;
     }
 
     if (paymentMethod === "card") {
@@ -175,7 +204,7 @@ export function CheckoutFlow({
   };
 
   const isSubmitting = createAppointment.isPending || startCheckout.isPending;
-  const canComplete = paymentMethod !== "card"
+  const canComplete = displayedTotalPrice === 0 || paymentMethod !== "card"
     || (identityNumber.length === 11 && registrationAddress.trim().length >= 5);
   const completionHint = !selectedServices.length
     ? "Sepete en az bir hizmet ekleyin."
@@ -185,9 +214,9 @@ export function CheckoutFlow({
         ? "Seçtiğiniz tarih için uygun bir saat seçin."
         : !preInformationAccepted || !distanceSalesAccepted
           ? "Devam etmek için iki sözleşme onayını da işaretleyin."
-          : paymentMethod === "card" && identityNumber.length !== 11
+          : displayedTotalPrice > 0 && paymentMethod === "card" && identityNumber.length !== 11
             ? "Kartla ödeme için 11 haneli T.C. kimlik numaranızı girin."
-            : paymentMethod === "card" && registrationAddress.trim().length < 5
+            : displayedTotalPrice > 0 && paymentMethod === "card" && registrationAddress.trim().length < 5
               ? "Kartla ödeme için fatura adresinizi girin."
               : "";
 
@@ -214,8 +243,8 @@ export function CheckoutFlow({
       </header>
 
       <ErrorAlert
-        message={shop.error || staffQuery.error || servicesQuery.error || slotsQuery.error}
-        onRetry={() => { shop.refresh(); staffQuery.refresh(); servicesQuery.refresh(); slotsQuery.refresh(); }}
+        message={shop.error || staffQuery.error || servicesQuery.error || slotsQuery.error || loyalty.error}
+        onRetry={() => { shop.refresh(); staffQuery.refresh(); servicesQuery.refresh(); slotsQuery.refresh(); loyalty.refresh(); }}
       />
 
       {(shop.isLoading || staffQuery.isLoading || servicesQuery.isLoading) ? (
@@ -370,7 +399,7 @@ export function CheckoutFlow({
                 ))}
               </RadioGroup>
 
-              {paymentMethod === "card" && (
+              {paymentMethod === "card" && displayedTotalPrice > 0 && (
                 <div className="grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-2">
                   <FormField label="T.C. kimlik numarası" description="Ödeme sağlayıcısının doğrulaması için gereklidir.">
                     <FormInput
@@ -439,6 +468,73 @@ export function CheckoutFlow({
                 <p className="mt-1 text-xs text-zinc-500">{selectedServices.length} hizmet · {totalDuration} dakika</p>
               </div>
 
+              <section className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3" aria-label="Yıldız sadakat ödülleri">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-zinc-200">Sadakat yıldızlarım</span>
+                  <span className="text-amber-300">⭐ {loyalty.data?.starCount ?? 0}/10</span>
+                </div>
+                <div
+                  className="h-1.5 overflow-hidden rounded-full bg-zinc-800"
+                  role="progressbar"
+                  aria-label="Ücretsiz hizmet için yıldız ilerlemesi"
+                  aria-valuemin={0}
+                  aria-valuemax={10}
+                  aria-valuenow={loyalty.data?.starCount ?? 0}
+                >
+                  <div
+                    className="h-full rounded-full bg-amber-400"
+                    style={{ width: `${Math.min(loyalty.data?.starCount ?? 0, 10) * 10}%` }}
+                  />
+                </div>
+                {loyalty.data?.availableRewards.length ? (
+                  <div className="space-y-1.5 pt-1">
+                    <label className="flex items-start gap-2 text-xs text-zinc-300">
+                      <input
+                        type="radio"
+                        name="loyaltyReward"
+                        checked={!selectedLoyaltyRewardId}
+                        onChange={() => setSelectedLoyaltyRewardId("")}
+                        disabled={Boolean(createdAppointment)}
+                        className="mt-0.5 accent-lime-400"
+                      />
+                      <span>Bu randevuda ödül kullanma</span>
+                    </label>
+                    {loyalty.data.availableRewards.map((reward) => (
+                      <label key={reward.id} className="flex items-start gap-2 text-xs text-zinc-300">
+                        <input
+                          type="radio"
+                          name="loyaltyReward"
+                          checked={selectedLoyaltyRewardId === reward.id}
+                          onChange={() => {
+                            setSelectedLoyaltyRewardId(reward.id);
+                            setCouponQuote(null);
+                            setAppliedCoupon("");
+                            setCouponCode("");
+                            validateCoupon.reset();
+                          }}
+                          disabled={Boolean(createdAppointment)}
+                          className="mt-0.5 accent-lime-400"
+                        />
+                        <span>
+                          Ücretsiz hizmet hakkını kullan · en fazla {formatMoney(reward.amountLimit)} indirim
+                        </span>
+                      </label>
+                    ))}
+                    {selectedLoyaltyReward && (
+                      <p className="pl-6 text-[11px] text-zinc-500">
+                        Bu hizmet için uygulanacak sadakat indirimi: {formatMoney(loyaltyDiscount)}. Limit üstü tutar size yansıtılır.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-zinc-500">
+                    {loyalty.isLoading
+                      ? "Yıldız bilgileriniz yükleniyor…"
+                      : "10 yıldıza ulaştığınızda limitli ücretsiz hizmet hakkı kazanırsınız."}
+                  </p>
+                )}
+              </section>
+
               <div className="flex gap-2">
                 <FormInput
                   value={couponCode}
@@ -451,12 +547,12 @@ export function CheckoutFlow({
                   maxLength={64}
                   placeholder="İndirim Kodu / Kupon Girin"
                   aria-label="İndirim kodu veya kupon girin"
-                  disabled={Boolean(createdAppointment)}
+                  disabled={Boolean(createdAppointment) || Boolean(selectedLoyaltyRewardId)}
                 />
                 <button
                   type="button"
                   onClick={() => void applyCoupon()}
-                  disabled={couponCode.trim().length < 4 || validateCoupon.isPending || Boolean(createdAppointment)}
+                  disabled={couponCode.trim().length < 4 || validateCoupon.isPending || Boolean(createdAppointment) || Boolean(selectedLoyaltyRewardId)}
                   className="shrink-0 rounded-md border border-zinc-700 px-3 text-xs font-medium text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {validateCoupon.isPending ? "Kontrol…" : "Uygula"}
@@ -476,11 +572,11 @@ export function CheckoutFlow({
                 </div>
                 <div className="flex justify-between gap-3 text-emerald-300">
                   <dt>Uygulanan indirim</dt>
-                  <dd>{couponQuote ? `−${formatMoney(couponQuote.discountAmount)}` : formatMoney(0)}</dd>
+                  <dd>{displayedDiscount > 0 ? `−${formatMoney(displayedDiscount)}` : formatMoney(0)}</dd>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-zinc-800 pt-3 font-semibold text-zinc-100">
                   <dt>Toplam ödenecek</dt>
-                  <dd>{formatMoney(couponQuote?.totalPrice ?? basePrice)}</dd>
+                  <dd>{formatMoney(displayedTotalPrice)}</dd>
                 </div>
               </dl>
 
@@ -514,7 +610,7 @@ export function CheckoutFlow({
                 </p>
               )}
               <p className="text-center text-[11px] leading-relaxed text-zinc-600">
-                Kupon ve toplam tutar randevu oluşturulurken sunucuda yeniden doğrulanır.
+                Kupon, sadakat ödülü ve toplam tutar randevu oluşturulurken sunucuda yeniden doğrulanır.
               </p>
             </section>
             <Link href={`/shops/${encodeURIComponent(shopId)}`} className="block text-center text-xs text-zinc-500 hover:text-zinc-200">

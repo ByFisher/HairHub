@@ -9,19 +9,25 @@ import { FormField, FormInput, FormListbox } from "@/components/ui/form";
 type EditableField = keyof Omit<ShopService, "id">;
 type EditingCell = { serviceId: string; field: EditableField };
 
-const editableFields: EditableField[] = ["name", "category", "description", "durationMinutes", "price", "status"];
+const editableFields: EditableField[] = ["name", "category", "description", "targetGender", "durationMinutes", "price", "status"];
 const fieldLabel: Record<EditableField, string> = {
   name: "Hizmet adı",
   category: "Kategori",
   description: "Açıklama",
+  targetGender: "Hedef kitle",
   durationMinutes: "Süre (dk)",
   price: "Fiyat (₺)",
   status: "Durum",
 };
+const targetGenderLabel: Record<ShopService["targetGender"], string> = {
+  male: "Erkek",
+  female: "Kadın",
+  unisex: "Herkes (Unisex)",
+};
 
 export function ShopServicesPanel() {
   const [services, setServices] = useState<ShopService[]>([]);
-  const [categories, setCategories] = useState(["Saç", "Sakal", "Paket", "Bakım"]);
+  const [categories, setCategories] = useState(["Saç", "Sakal", "Cilt Bakımı", "Tırnak", "Makyaj", "Epilasyon", "Paket", "Bakım"]);
   const [loading, setLoading] = useState(true);
   const [savingCells, setSavingCells] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -65,7 +71,7 @@ export function ShopServicesPanel() {
     if (editingCell?.serviceId !== service.id || editingCell.field !== field) return;
     const key = `${service.id}:${field}`;
     if (savingCells.includes(key)) return;
-    let value: string | number | ShopService["status"] = nextValue.trim();
+    let value: string | number | ShopService["status"] | ShopService["targetGender"] = nextValue.trim();
     if (field === "price" || field === "durationMinutes") {
       const numberValue = Number(nextValue);
       const minimum = field === "durationMinutes" ? 1 : 0;
@@ -93,6 +99,9 @@ export function ShopServicesPanel() {
       let updated: ShopService;
       if (field === "status") {
         if (value !== "active" && value !== "inactive") throw new Error("Hizmet durumu geçersiz.");
+        updated = await updateShopServiceField(service.id, field, value);
+      } else if (field === "targetGender") {
+        if (value !== "male" && value !== "female" && value !== "unisex") throw new Error("Hizmet hedef kitlesi geçersiz.");
         updated = await updateShopServiceField(service.id, field, value);
       } else if (field === "price" || field === "durationMinutes") {
         if (typeof value !== "number") throw new Error("Sayısal hizmet alanı geçersiz.");
@@ -123,6 +132,7 @@ export function ShopServicesPanel() {
         name: "Yeni Hizmet",
         category: "Yeni Kategori",
         description: "",
+        targetGender: "unisex",
         durationMinutes: 30,
         price: 0,
         status: "active",
@@ -159,6 +169,21 @@ export function ShopServicesPanel() {
           className="min-w-28"
         />;
       }
+      if (field === "targetGender") {
+        return <FormListbox
+          label={`${service.name} hedef kitlesi`}
+          description="Hizmetin hangi modlarda listeleneceğini belirleyin."
+          value={editValue}
+          onChange={(value) => { setEditValue(value); void commitEdit(service, field, value); }}
+          clearable={false}
+          options={[
+            { value: "male", label: "Erkek" },
+            { value: "female", label: "Kadın" },
+            { value: "unisex", label: "Herkes (Unisex)" },
+          ]}
+          className="min-w-36"
+        />;
+      }
       return <FormField label={`${service.name} ${fieldLabel[field]}`} description={`${fieldLabel[field]} değerini güncelleyin.`}>
       <FormInput
         autoFocus
@@ -182,6 +207,7 @@ export function ShopServicesPanel() {
     if (field === "price") displayValue = service.price.toLocaleString("tr-TR");
     else if (field === "durationMinutes") displayValue = String(service.durationMinutes);
     else if (field === "status") displayValue = service.status === "active" ? "Aktif" : "Pasif";
+    else if (field === "targetGender") displayValue = targetGenderLabel[service.targetGender];
     else if (field === "name") displayValue = service.name;
     else if (field === "category") displayValue = service.category;
     else displayValue = service.description;

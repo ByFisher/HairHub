@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\StaffReview;
+use App\Services\StaffHighScoreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminReviewController extends Controller
@@ -43,6 +45,7 @@ class AdminReviewController extends Controller
                 'moderated_by' => $request->user()->id,
                 'moderated_at' => now(),
             ]);
+            app(StaffHighScoreService::class)->recalculate($record->staff);
             $this->audit($request, 'review.approved', $record);
 
             return $record->refresh()->load(['staff.shop', 'customer']);
@@ -55,8 +58,15 @@ class AdminReviewController extends Controller
     {
         DB::transaction(function () use ($request, $review): void {
             $record = StaffReview::query()->whereKey($review)->lockForUpdate()->firstOrFail();
+            $staff = $record->staff;
+            $photoPath = $record->photo_path;
             $this->audit($request, 'review.deleted', $record);
             $record->delete();
+            app(StaffHighScoreService::class)->recalculate($staff);
+
+            if ($photoPath && Storage::disk('public')->exists($photoPath)) {
+                abort_unless(Storage::disk('public')->delete($photoPath), 500, 'Yorum fotoğrafı silinemedi.');
+            }
         });
 
         return response()->json(['message' => 'Yorum silindi.']);
@@ -70,6 +80,7 @@ class AdminReviewController extends Controller
             'id' => (string) $review->id,
             'rating' => (int) $review->rating,
             'comment' => $review->comment,
+            'photoUrl' => $review->photo_path ? Storage::disk('public')->url($review->photo_path) : null,
             'status' => $review->moderation_status,
             'createdAt' => $review->created_at?->toISOString(),
             'customerFirstName' => $parts[0],

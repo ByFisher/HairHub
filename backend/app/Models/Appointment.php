@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\LoyaltyService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,15 +12,33 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'customer_id', 'shop_id', 'staff_id', 'service_id', 'starts_at', 'ends_at', 'status', 'total_price', 'note',
     'cancellation_reason', 'cancelled_by_user_id', 'cancelled_at', 'base_price', 'discount_amount', 'coupon_id',
+    'loyalty_reward_id',
 ])]
 class Appointment extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(function (Appointment $appointment): void {
+            if (! $appointment->wasRecentlyCreated && ! $appointment->wasChanged('status')) {
+                return;
+            }
+
+            if (in_array($appointment->status, ['completed', 'cancelled', 'cancelled_by_shop'], true)) {
+                app(LoyaltyService::class)->handleAppointmentStatusChange($appointment);
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'total_price' => 'integer',
+            'base_price' => 'integer',
+            'discount_amount' => 'integer',
+            'loyalty_reward_id' => 'integer',
         ];
     }
 
@@ -69,5 +88,10 @@ class Appointment extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function loyaltyReward(): BelongsTo
+    {
+        return $this->belongsTo(LoyaltyReward::class);
     }
 }

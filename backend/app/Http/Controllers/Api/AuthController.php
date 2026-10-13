@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\LocationCatalog;
 use App\Models\User;
+use App\Rules\ValidTurkishTaxNumber;
+use App\Services\LocationCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -78,8 +79,13 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:12'],
             'shopName' => ['required', 'string', 'min:2', 'max:120'],
+            'genderType' => ['sometimes', 'in:male,female,unisex'],
             'phone' => ['required', 'string', 'max:40'],
             ...$this->customerLocationRules($request, $locations),
+            'address' => ['required', 'string', 'min:5', 'max:255'],
+            'taxNumber' => ['required', 'string', new ValidTurkishTaxNumber],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ]);
 
         $owner = $this->createShopOwner([
@@ -87,11 +93,15 @@ class AuthController extends Controller
             'email' => mb_strtolower($data['email']),
             'password' => $data['password'],
             'shopName' => trim($data['shopName']),
+            'genderType' => $data['genderType'] ?? 'unisex',
             'phone' => trim($data['phone']),
             'shopPhone' => trim($data['phone']),
             'city' => trim($data['city']),
             'district' => trim($data['district']),
-            'address' => '',
+            'address' => trim($data['address']),
+            'taxNumber' => $data['taxNumber'],
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
         ]);
 
         return response()->json([
@@ -108,9 +118,13 @@ class AuthController extends Controller
             'phone' => ['required', 'string', 'max:40'],
             'password' => ['required', 'string', 'min:12', 'confirmed'],
             'shopName' => ['required', 'string', 'min:2', 'max:120'],
+            'genderType' => ['sometimes', 'in:male,female,unisex'],
             ...$this->customerLocationRules($request, $locations),
             'address' => ['required', 'string', 'max:255'],
             'shopPhone' => ['required', 'string', 'max:40'],
+            'taxNumber' => ['required', 'string', new ValidTurkishTaxNumber],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ]);
 
         $owner = $this->createShopOwner($data);
@@ -122,7 +136,7 @@ class AuthController extends Controller
     }
 
     /**
-     * @param array{name:string,email:string,phone:string,password:string,shopName:string,city:string,district:string,address:string,shopPhone:string} $data
+     * @param array<string, mixed> $data
      */
     private function createShopOwner(array $data): User
     {
@@ -148,6 +162,10 @@ class AuthController extends Controller
                 'district' => $data['district'],
                 'street' => $data['address'],
                 'phone' => $data['shopPhone'],
+                'gender_type' => $data['genderType'] ?? 'unisex',
+                'tax_number' => $data['taxNumber'] ?? null,
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
             ]);
 
             return $user;

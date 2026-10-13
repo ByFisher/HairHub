@@ -2,12 +2,14 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/providers/theme-provider";
+import { GenderSwitcher } from "@/components/providers/gender-provider";
 import { LandingDiscovery } from "@/components/user/LandingDiscovery";
 import { HeroSlider } from "@/components/user/HeroSlider";
+import { HairHubXrayAnimation } from "@/components/HairHubXrayAnimation";
 
 export function LandingHero() {
   return (
-    <main className="public-theme relative isolate min-h-screen overflow-hidden bg-[#080b0a] text-zinc-100">
+    <main className="public-theme relative isolate min-h-screen overflow-hidden bg-[#09090b] text-zinc-100">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-1/2 top-[-28rem] h-[54rem] w-[68rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.025)_38%,transparent_70%)]" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
@@ -15,16 +17,17 @@ export function LandingHero() {
       </div>
 
       <header className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8 lg:px-12">
-        <Link href="/" className="group inline-flex items-center gap-3" aria-label="HemenTıraş ana sayfa">
+        <Link href="/" className="group inline-flex items-center gap-3" aria-label="HairHub ana sayfa">
           <BrandLogo size={40} className="rounded-xl transition group-hover:scale-105" />
-          <span className="text-sm font-semibold tracking-tight text-zinc-100">HemenTıraş</span>
+          <span className="text-sm font-semibold tracking-tight text-zinc-100">HairHub</span>
         </Link>
         <nav aria-label="Hesap işlemleri" className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <GenderSwitcher />
           <Link
             href="/register/shop"
             className="inline-flex h-10 items-center rounded-full border border-white/15 bg-white/[0.04] px-4 text-xs font-medium text-zinc-100 transition hover:border-white/25 hover:bg-white/[0.08]"
           >
-            Dükkan hesabı oluştur
+            İşletme hesabı oluştur
           </Link>
           <Link
             href="/register"
@@ -44,6 +47,9 @@ export function LandingHero() {
 
       <div className="pt-4 sm:pt-8">
         <HeroSlider />
+        <div className="mx-auto mb-10 w-full max-w-7xl px-5 sm:px-8 lg:px-12">
+          <HairHubXrayAnimation height="clamp(390px, 40vw, 470px)" />
+        </div>
         <LandingDiscovery />
       </div>
     </main>

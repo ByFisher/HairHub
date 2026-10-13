@@ -24,8 +24,8 @@ export function useFavorites() {
   );
 
   const toggle = async (shopId: string) => {
-    if (!requestCustomerAccess("dükkanı favorilerinize eklemek", window.location.pathname + window.location.search)) return;
-    if (!isCustomer || pendingShopId) return;
+    if (!requestCustomerAccess("dükkanı favorilerinize eklemek", window.location.pathname + window.location.search)) return false;
+    if (!isCustomer || pendingShopId) return false;
 
     const wasFavorite = has(shopId);
     setPendingShopId(shopId);
@@ -37,7 +37,9 @@ export function useFavorites() {
           values: { ...(current.userId === user?.id ? current.values : {}), [shopId]: result.isFavorite },
         }));
         query.refresh();
+        return true;
       }
+      return false;
     } finally {
       setPendingShopId(null);
     }

@@ -9,6 +9,7 @@ import type {
   WeeklyWorkDay,
   StaffSkill,
 } from "@/types/portal";
+import type { GenderTarget } from "@/types/api";
 
 export type ShopServiceInput = Omit<ShopService, "id">;
 export type ShopServiceField = keyof ShopServiceInput;
@@ -18,6 +19,7 @@ export interface ShopProfileData {
   phone: string | null;
   address: string;
   description: string;
+  genderType: GenderTarget;
   profileImageUrl: string | null;
   coverImageUrl: string | null;
 }
@@ -38,6 +40,8 @@ export type ShopStaffUpdateInput = Pick<
 >;
 
 export const getShopProfile = () => get<ShopProfileData>("/shop/profile");
+export const updateShopGender = (genderType: GenderTarget) =>
+  put<ShopProfileData>("/shop/profile", { genderType });
 
 export const updateShopHours = (workingHours: WeeklyWorkDay[]) =>
   put<ShopHoursData>("/shop/hours", { workingHours });

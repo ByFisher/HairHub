@@ -9,6 +9,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
+import { useGender } from "@/components/providers/gender-provider";
 
 function slideLink(slide: SliderSlide) {
   if (!slide.linkUrl) return null;
@@ -25,7 +26,6 @@ function SlideContent({ slide }: { slide: SliderSlide }) {
       <img src={slide.imageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
       <div className="max-w-2xl space-y-4 p-6 sm:p-10 lg:p-14">
-        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">{slide.title}</h1>
         {slide.description && <p className="max-w-xl text-sm leading-relaxed text-zinc-200 sm:text-base">{slide.description}</p>}
         {slideLink(slide)}
       </div>
@@ -34,7 +34,11 @@ function SlideContent({ slide }: { slide: SliderSlide }) {
 }
 
 export function HeroSlider() {
-  const { data: slides = [], error, isLoading } = useApiQuery<SliderSlide[]>(["/sliders"], { list: true });
+  const { gender } = useGender();
+  const { data: slides = [], error, isLoading } = useApiQuery<SliderSlide[]>(["/sliders", gender], {
+    list: true,
+    query: { gender: gender === "all" ? undefined : gender },
+  });
 
   if (isLoading) {
     return <div aria-label="Banner yükleniyor" className="mx-auto mb-10 h-64 max-w-7xl animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/60 px-5 sm:h-80 sm:px-8 lg:px-12" />;

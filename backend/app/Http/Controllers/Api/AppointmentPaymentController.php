@@ -31,6 +31,7 @@ class AppointmentPaymentController extends Controller
         $payment = DB::transaction(function () use ($appointment): AppointmentPayment {
             $lockedAppointment = Appointment::query()->whereKey($appointment->id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($lockedAppointment->status, ['pending', 'confirmed'], true), 409, 'Bu randevu için ödeme başlatılamaz.');
+            abort_if($lockedAppointment->total_price === 0, 409, 'Ödenecek tutarı olmayan randevular için ödeme başlatılamaz.');
             $payment = $lockedAppointment->payment()->lockForUpdate()->first();
 
             if ($payment?->status === 'paid') {

@@ -112,13 +112,13 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
           <Link href={PORTAL_HOME[role]} className="flex items-center gap-2.5">
             <BrandLogo size={32} className="rounded-md" />
-            <span><span className="block text-sm font-semibold">HemenTıraş <span className="ml-1 rounded border border-zinc-800 bg-zinc-900 px-1 text-[10px] font-normal text-zinc-500">OPS</span></span><span className="text-[10px] text-zinc-500">Yönetim Portalı</span></span>
+            <span><span className="block text-sm font-semibold">HairHub <span className="ml-1 rounded border border-zinc-800 bg-zinc-900 px-1 text-[10px] font-normal text-zinc-500">OPS</span></span><span className="text-[10px] text-zinc-500">Yönetim Portalı</span></span>
           </Link>
           <button type="button" aria-label="Gezinme menüsünü kapat" onClick={() => setMenuOpen(false)} className="rounded p-1 text-zinc-500 hover:bg-zinc-800 md:hidden"><X size={17} /></button>
         </div>
         <div className="border-b border-zinc-800 p-3">
           <div className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-            <p className="truncate text-xs font-medium text-zinc-200">{role === "admin" ? "HemenTıraş" : role === "shop" ? user.shopName ?? user.fullName : user.fullName}</p>
+            <p className="truncate text-xs font-medium text-zinc-200">{role === "admin" ? "HairHub" : role === "shop" ? user.shopName ?? user.fullName : user.fullName}</p>
             <p className="mt-0.5 text-[10px] text-zinc-500">{roleLabel}</p>
           </div>
         </div>
@@ -158,7 +158,7 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
               {role === "shop" ? <Store size={14} className="shrink-0" /> : role === "sponsor" ? <Megaphone size={14} /> : <Scissors size={14} />}
               {roleLabel}
             </span>
-            <ThemeToggle className="size-9 rounded-md border-zinc-800 text-zinc-400 hover:bg-zinc-900" />
+            <ThemeToggle />
             <UserDropdown user={user} onUserUpdated={setUser} onSignOut={() => void signOut()} showCustomerLinks={false} />
           </div>
         </header>

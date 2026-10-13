@@ -3,12 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\PasswordResetNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -45,6 +47,11 @@ class User extends Authenticatable
         return $this->hasMany(Appointment::class, 'customer_id');
     }
 
+    public function loyalty(): HasOne
+    {
+        return $this->hasOne(UserLoyalty::class);
+    }
+
     public function favoriteShops(): BelongsToMany
     {
         return $this->belongsToMany(Shop::class, 'shop_favorites')->withTimestamps();
@@ -58,5 +65,10 @@ class User extends Authenticatable
     public function coupons(): HasMany
     {
         return $this->hasMany(Coupon::class, 'created_by_user_id');
+    }
+
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new PasswordResetNotification($token));
     }
 }

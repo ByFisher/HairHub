@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { UserRole } from "@/types/api";
+import type { GenderTarget, UserRole } from "@/types/api";
 
 export type PortalRole = "admin" | "shop" | "sponsor";
 export type AuthRole = "super_admin" | "admin" | "moderator" | "shop_owner" | "staff" | "customer" | "sponsor";
@@ -49,6 +49,7 @@ export interface ShopService {
   id: string;
   name: string;
   category: string;
+  targetGender: GenderTarget;
   description: string;
   durationMinutes: number;
   price: number;
@@ -119,13 +120,15 @@ export interface ShopStaffMember {
   id: string;
   firstName: string;
   lastName: string;
-  title: "Berber" | "Kalfa" | "Çırak";
+  title: "Berber" | "Kuaför" | "Kalfa" | "Çırak";
   experienceYears: number;
   biography: string;
   photoUrl?: string;
   pendingPhotoUrl?: string;
   approvalStatus: "approved" | "pending_approval" | "rejected";
   isApproved: boolean;
+  highScore: number;
+  totalPhotoReviews: number;
   ownerRating: number;
   customerRatings: number[];
   completedAppointmentCount: number;

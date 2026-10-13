@@ -12,6 +12,7 @@ const FILTERS: { value: AppointmentStatus | ""; label: string }[] = [
   { value: "", label: "Yaklaşan ve son randevular" },
   { value: "pending", label: "Onay bekleyen" },
   { value: "confirmed", label: "Onaylanan" },
+  { value: "completed", label: "Tamamlanan" },
   { value: "cancelled", label: "İptal edilen" },
   { value: "cancelled_by_shop", label: "Dükkan tarafından iptal edilen" },
 ];
@@ -42,6 +43,14 @@ export function ShopAppointmentsPanel() {
   const cancel = useApiMutation<{ id: string; reason?: string }, Appointment>(
     ({ id, reason: cancelReason }) => shopAppointmentApi.cancel(id, cancelReason),
   );
+  const complete = useApiMutation<string, Appointment>((id) => shopAppointmentApi.complete(id));
+
+  const completeAppointment = async (appointment: Appointment) => {
+    const result = await complete.run(appointment.id);
+    if (!result) return;
+    setNotice("Randevu tamamlandı ve müşteriye 1 sadakat yıldızı eklendi.");
+    appointments.refresh();
+  };
 
   const closeDialog = () => {
     setCancelTarget(null);
@@ -81,6 +90,7 @@ export function ShopAppointmentsPanel() {
 
       {notice && <p role="status" className="rounded-md border border-zinc-700 bg-zinc-900 p-3 text-xs text-zinc-200">{notice}</p>}
       <ErrorAlert message={appointments.error} onRetry={appointments.refresh} />
+      <ErrorAlert message={complete.error} />
 
       {appointments.isLoading ? (
         <SkeletonRows rows={3} columns={3} />
@@ -122,6 +132,16 @@ export function ShopAppointmentsPanel() {
                   {appointment.payment.status === "refund_failed" ? "İadeyi tekrar dene" : "Randevuyu iptal et"}
                 </button>
               )}
+              {(appointment.status === "pending" || appointment.status === "confirmed") && (
+                  <button
+                    type="button"
+                    onClick={() => void completeAppointment(appointment)}
+                    disabled={complete.isPending}
+                    className="rounded border border-emerald-900 px-3 py-1.5 text-[11px] text-emerald-300 hover:bg-emerald-950/40 disabled:opacity-50"
+                  >
+                    {complete.isPending ? "Tamamlanıyor…" : "Randevuyu tamamla"}
+                  </button>
+                )}
             </li>
           ))}
         </ul>

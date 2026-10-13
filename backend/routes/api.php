@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AccessLogController;
-use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminAuditLogController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminPaymentController;
 use App\Http\Controllers\Api\AdminReviewController;
 use App\Http\Controllers\Api\AdminStaffController;
@@ -14,12 +14,15 @@ use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\FinanceController;
-use App\Http\Controllers\Api\PrivacyConsentController;
+use App\Http\Controllers\Api\LoyaltyController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PortalOverviewController;
+use App\Http\Controllers\Api\PrivacyConsentController;
 use App\Http\Controllers\Api\PublicShopController;
 use App\Http\Controllers\Api\ShopAppointmentController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\SliderController;
+use App\Http\Controllers\Api\SmtpSettingController;
 use App\Http\Controllers\Api\SponsorApprovalController;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
@@ -27,6 +30,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/auth/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
+    Route::post('/auth/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:10,1');
     Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
     Route::post('/auth/register-customer', [AuthController::class, 'registerCustomer'])->middleware('throttle:3,1');
     Route::post('/auth/register-shop', [AuthController::class, 'registerShop'])->middleware('throttle:3,1');
@@ -91,6 +96,9 @@ Route::prefix('v1')->group(function (): void {
             );
 
             Route::middleware('role:super_admin')->group(function (): void {
+                Route::get('/settings/smtp', [SmtpSettingController::class, 'show']);
+                Route::post('/settings/smtp', [SmtpSettingController::class, 'update']);
+                Route::post('/settings/smtp/test', [SmtpSettingController::class, 'test'])->middleware('throttle:5,1');
                 Route::get('/audit-logs', [AdminAuditLogController::class, 'index']);
                 Route::get('/financial-logs', [FinanceController::class, 'adminIndex']);
                 Route::get('/coupons', [CouponController::class, 'adminIndex']);
@@ -101,8 +109,12 @@ Route::prefix('v1')->group(function (): void {
 
             Route::middleware('permission:admin.shops.manage')->group(function (): void {
                 Route::get('/shops', [AdminController::class, 'shops']);
+                Route::get('/shop-staff', [AdminController::class, 'shopStaff']);
                 Route::get('/pending-approvals', [AdminController::class, 'pendingApprovals']);
                 Route::patch('/shops/{shop}/status', [AdminController::class, 'setShopStatus']);
+                Route::patch('/shops/{shop}/gender', [AdminController::class, 'updateShopGender']);
+                Route::get('/shops/{shop}/services', [AdminController::class, 'shopServices']);
+                Route::patch('/shops/{shop}/services/{service}/gender', [AdminController::class, 'updateShopServiceGender']);
             });
 
             Route::middleware('permission:admin.sponsors.manage')->group(function (): void {
@@ -138,7 +150,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/coupons', [CouponController::class, 'shopStore']);
             Route::get('/appointments', [ShopAppointmentController::class, 'index']);
             Route::post('/appointments/{appointment}/cancel', [ShopAppointmentController::class, 'cancel']);
+            Route::post('/appointments/{appointment}/complete', [ShopAppointmentController::class, 'complete']);
             Route::get('/profile', [ShopController::class, 'profile']);
+            Route::put('/profile', [ShopController::class, 'updateProfile']);
             Route::get('/hours', [ShopController::class, 'hours']);
             Route::put('/hours', [ShopController::class, 'updateHours']);
             Route::get('/gallery', [ShopController::class, 'gallery']);
@@ -161,6 +175,7 @@ Route::prefix('v1')->group(function (): void {
         });
         Route::middleware('role:customer')->group(function (): void {
             Route::post('/coupons/validate', [CouponController::class, 'validateCode']);
+            Route::get('/user/loyalty', [LoyaltyController::class, 'summary']);
             Route::get('/user/active-appointments', [AppointmentController::class, 'active']);
             Route::get('/appointments', [AppointmentController::class, 'index']);
             Route::post('/appointments', [AppointmentController::class, 'create']);
@@ -171,6 +186,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/appointments/{appointment}/checkout/verify', [AppointmentPaymentController::class, 'verifyCustomerCheckout']);
             Route::post('/appointments/{appointment}/review', [AppointmentController::class, 'review']);
             Route::get('/user/favorites', [FavoriteController::class, 'index']);
+            Route::get('/user/favorite-shops', [FavoriteController::class, 'shops']);
             Route::put('/user/favorites/{shop}', [FavoriteController::class, 'store']);
             Route::delete('/user/favorites/{shop}', [FavoriteController::class, 'destroy']);
         });

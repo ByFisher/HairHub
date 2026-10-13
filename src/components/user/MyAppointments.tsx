@@ -33,8 +33,9 @@ function formatWhen(iso: string) {
 function RatingModal({ appointment, onClose }: { appointment: Appointment; onClose: () => void }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const submit = useApiMutation<{ rating: number; comment?: string }, StaffReview>(
-    (input) => appointmentApi.review(appointment.id, input.rating, input.comment),
+  const [photo, setPhoto] = useState<File | undefined>();
+  const submit = useApiMutation<{ rating: number; comment?: string; photo?: File }, StaffReview>(
+    (input) => appointmentApi.review(appointment.id, input.rating, input.comment, input.photo),
   );
 
   return (
@@ -76,6 +77,18 @@ function RatingModal({ appointment, onClose }: { appointment: Appointment; onClo
             placeholder="Deneyiminizi anlatın..."
           />
         </FormField>
+        <label className="block space-y-1.5 text-xs text-zinc-300">
+          <span>Sonuç fotoğrafı (opsiyonel)</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => setPhoto(event.target.files?.[0])}
+            className="block w-full text-[11px] text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:text-zinc-200 hover:file:bg-zinc-700"
+          />
+          <span className="block text-[11px] leading-relaxed text-amber-300">
+            Yaptırdığın modelin fotoğrafını paylaş, personele +15 High Puan kazandır! (En fazla 5 MB.)
+          </span>
+        </label>
 
         <ErrorAlert message={submit.error} />
         <div className="flex justify-end gap-2">
@@ -85,7 +98,7 @@ function RatingModal({ appointment, onClose }: { appointment: Appointment; onClo
           <button
             type="button"
             disabled={submit.isPending}
-            onClick={async () => { if (await submit.run({ rating, comment })) onClose(); }}
+            onClick={async () => { if (await submit.run({ rating, comment, photo })) onClose(); }}
             className="rounded-md bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-950 hover:bg-white disabled:opacity-50"
           >
             {submit.isPending ? "Gönderiliyor..." : "Değerlendirmeyi gönder"}
@@ -124,7 +137,7 @@ function IyzicoCheckoutDialog({ appointment, onClose }: { appointment: Appointme
             </DialogDescription>
           </div>
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            Kimlik numaranız ve fatura adresiniz yalnızca ödeme isteği için iyzico’ya gönderilir; HemenTıraş veritabanında saklanmaz.
+            Kimlik numaranız ve fatura adresiniz yalnızca ödeme isteği için iyzico’ya gönderilir; HairHub veritabanında saklanmaz.
           </p>
           <label className="block space-y-1.5 text-xs text-zinc-400">
             <span>T.C. kimlik numarası</span>

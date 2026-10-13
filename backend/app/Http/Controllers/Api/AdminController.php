@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
+use App\Models\ShopService;
+use App\Models\ShopStaff;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -94,6 +97,49 @@ class AdminController extends Controller
         return response()->json($this->shopData($shop->refresh()));
     }
 
+    public function updateShopGender(Request $request, Shop $shop)
+    {
+        $data = $request->validate([
+            'genderType' => ['required', Rule::in(['male', 'female', 'unisex'])],
+        ]);
+        DB::transaction(function () use ($request, $shop, $data): void {
+            $previousGender = $shop->gender_type;
+            $shop->update(['gender_type' => $data['genderType']]);
+            $this->audit($request, 'shop.gender_type_changed', Shop::class, $shop->id, [
+                'from' => $previousGender,
+                'to' => $shop->gender_type,
+            ]);
+        });
+
+        return response()->json($this->shopData($shop->refresh()));
+    }
+
+    public function shopServices(Shop $shop)
+    {
+        return response()->json($shop->services()->orderBy('sort_order')->orderBy('id')->get()->map(
+            fn (ShopService $service) => $this->shopServiceData($service),
+        ));
+    }
+
+    public function updateShopServiceGender(Request $request, Shop $shop, ShopService $service)
+    {
+        abort_unless($service->shop_id === $shop->id, 404);
+        $data = $request->validate([
+            'targetGender' => ['required', Rule::in(['male', 'female', 'unisex'])],
+        ]);
+        DB::transaction(function () use ($request, $shop, $service, $data): void {
+            $previousGender = $service->target_gender;
+            $service->update(['target_gender' => $data['targetGender']]);
+            $this->audit($request, 'shop_service.target_gender_changed', ShopService::class, $service->id, [
+                'shop_id' => (string) $shop->id,
+                'from' => $previousGender,
+                'to' => $service->target_gender,
+            ]);
+        });
+
+        return response()->json($this->shopServiceData($service->refresh()));
+    }
+
     public function shops(Request $request)
     {
         $shops = Shop::query()
@@ -105,6 +151,66 @@ class AdminController extends Controller
             ->paginate(min(max($request->integer('per_page', 25), 1), 100));
 
         return $this->paginated($shops, fn (Shop $shop) => $this->shopData($shop));
+    }
+
+    public function shopStaff(Request $request)
+    {
+        $data = $request->validate([
+            'title' => ['required', Rule::in(['Kuaför', 'Berber'])],
+            'search' => ['sometimes', 'string'],
+            'status' => ['sometimes', Rule::in(['approved', 'pending_approval', 'rejected'])],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+        $staff = ShopStaff::query()
+            ->where('title', $data['title'])
+            ->when(isset($data['search']) && $data['search'] !== '', function ($query) use ($data): void {
+                $term = '%'.$data['search'].'%';
+                $query->where(function ($search) use ($term): void {
+                    $search->where('first_name', 'like', $term)
+                        ->orWhere('last_name', 'like', $term)
+                        ->orWhereHas('shop', fn ($shop) => $shop->where('name', 'like', $term));
+                });
+            })
+            ->when(isset($data['status']), fn ($query) => $query->where('approval_status', $data['status']))
+            ->with([
+                'shop:id,name,city,district,phone',
+                'reviews:id,staff_id,rating',
+            ])
+            ->withCount([
+                'appointments as completed_appointment_count' => fn ($query) => $query->where('status', 'completed'),
+                'reviews',
+            ])
+            ->withAvg('reviews', 'rating')
+            ->latest()
+            ->paginate(min(max((int) ($data['per_page'] ?? 25), 1), 100));
+
+        return $this->paginated($staff, fn (ShopStaff $member) => [
+            'id' => (string) $member->id,
+            'shopId' => (string) $member->shop_id,
+            'shopName' => $member->shop->name,
+            'shopCity' => $member->shop->city,
+            'shopDistrict' => $member->shop->district,
+            'shopPhone' => $this->maskPhone($member->shop->phone),
+            'firstName' => $member->first_name,
+            'lastName' => $member->last_name,
+            'title' => $member->title,
+            'experienceYears' => $member->experience_years,
+            'biography' => $member->biography,
+            'photoUrl' => $member->photo_url,
+            'approvalStatus' => $member->approval_status,
+            'isApproved' => $member->approval_status === 'approved',
+            'averageRating' => (float) ($member->reviews_avg_rating ?? 0),
+            'reviewCount' => $member->reviews_count,
+            'highScore' => (float) $member->high_score,
+            'totalPhotoReviews' => (int) $member->total_photo_reviews,
+            'completedAppointmentCount' => $member->completed_appointment_count,
+            'workingHours' => $member->working_hours ?? [],
+            'ownerRating' => (float) $member->owner_rating,
+            'customerRatings' => $member->reviews->pluck('rating')->all(),
+            'skills' => $member->skills ?? [],
+            'workLogs' => $member->work_logs ?? [],
+            'createdAt' => $member->created_at->toISOString(),
+        ]);
     }
 
     public function pendingApprovals(Request $request)
@@ -219,6 +325,7 @@ class AdminController extends Controller
             'slug' => $shop->slug,
             'name' => $shop->name,
             'description' => $shop->description,
+            'genderType' => $shop->gender_type,
             'status' => $shop->status,
             'isApproved' => $shop->is_approved,
             'coverImageUrl' => $shop->cover_image_url,
@@ -227,8 +334,8 @@ class AdminController extends Controller
                 'district' => ['id' => $shop->district, 'name' => $shop->district, 'city' => ['id' => $shop->city, 'name' => $shop->city, 'plateCode' => '']],
                 'street' => $shop->street,
                 'fullAddress' => trim($shop->street.', '.$shop->district.', '.$shop->city, ', '),
-                'latitude' => null,
-                'longitude' => null,
+                'latitude' => $shop->latitude,
+                'longitude' => $shop->longitude,
             ],
             'phone' => $this->maskPhone($shop->phone),
             'workingHours' => $shop->working_hours ?? [],
@@ -262,14 +369,26 @@ class AdminController extends Controller
         };
     }
 
-    private function audit(Request $request, string $action, string $type, int $id): void
+    private function shopServiceData(ShopService $service): array
+    {
+        return [
+            'id' => (string) $service->id,
+            'shopId' => (string) $service->shop_id,
+            'name' => $service->name,
+            'category' => $service->category,
+            'targetGender' => $service->target_gender,
+            'isActive' => $service->is_active,
+        ];
+    }
+
+    private function audit(Request $request, string $action, string $type, int $id, ?array $metadata = null): void
     {
         DB::table('audit_logs')->insert([
             'actor_user_id' => $request->user()->id,
             'action' => $action,
             'subject_type' => $type,
             'subject_id' => (string) $id,
-            'metadata' => null,
+            'metadata' => $metadata === null ? null : json_encode($metadata, JSON_THROW_ON_ERROR),
             'created_at' => now(),
             'updated_at' => now(),
         ]);

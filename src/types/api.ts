@@ -1,4 +1,4 @@
-/** HemenTıraş B2B/B2C API sözleşmesi — Laravel backend ile paylaşılan alan tipleri. */
+/** HairHub B2B/B2C API sözleşmesi — Laravel backend ile paylaşılan alan tipleri. */
 
 export type ISODate = string; // YYYY-MM-DD
 export type ISODateTime = string; // ISO-8601
@@ -43,6 +43,7 @@ export interface AdminReview {
   id: string;
   rating: number;
   comment: string | null;
+  photoUrl: string | null;
   status: "pending_approval" | "approved";
   createdAt: ISODateTime;
   customerFirstName: string;
@@ -98,11 +99,15 @@ export interface WorkingHour {
 
 export type ShopStatus = "pending_approval" | "active" | "suspended" | "passive";
 
+export type GenderMode = "male" | "female" | "all";
+export type GenderTarget = "male" | "female" | "unisex";
+
 export interface Shop {
   id: string;
   slug: string;
   name: string;
   description: string;
+  genderType: GenderTarget;
   status: ShopStatus;
   isApproved?: boolean;
   /** Yalnızca admin onayından geçmiş görseller müşteriye döner. */
@@ -126,6 +131,7 @@ export interface SliderSlide {
   imageUrl: string;
   linkUrl: string | null;
   linkLabel: string | null;
+  targetGender: GenderTarget;
 }
 
 export interface AdminSlider extends SliderSlide {
@@ -138,6 +144,7 @@ export interface Service {
   shopId: string;
   name: string;
   category: string;
+  targetGender: GenderTarget;
   description: string;
   durationMinutes: number;
   price: number;
@@ -145,7 +152,16 @@ export interface Service {
   sortOrder: number;
 }
 
-export type StaffTitle = "Berber" | "Kalfa" | "Çırak";
+export interface AdminShopServiceClassification {
+  id: string;
+  shopId: string;
+  name: string;
+  category: string;
+  targetGender: GenderTarget;
+  isActive: boolean;
+}
+
+export type StaffTitle = "Berber" | "Kuaför" | "Kalfa" | "Çırak";
 export type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
 export interface Staff {
@@ -161,9 +177,23 @@ export interface Staff {
   isApproved: boolean;
   averageRating: number;
   reviewCount: number;
+  highScore: number;
+  totalPhotoReviews: number;
   completedAppointmentCount: number;
   workingHours: WorkingHour[];
   services: Service[];
+}
+
+export interface AdminProfessional extends Omit<Staff, "services"> {
+  shopName: string;
+  shopCity: string;
+  shopDistrict: string;
+  shopPhone: string;
+  ownerRating: number;
+  customerRatings: number[];
+  skills: unknown[] | null;
+  workLogs: unknown[] | null;
+  createdAt: ISODateTime;
 }
 
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled" | "cancelled_by_shop" | "no_show";
@@ -181,6 +211,7 @@ export interface Appointment {
   basePrice?: number;
   discountAmount?: number;
   couponCode?: string | null;
+  loyaltyRewardAmountLimit?: number | null;
   services?: Pick<Service, "id" | "name" | "durationMinutes" | "price">[];
   note: string | null;
   /** Yalnızca tamamlanmış randevularda döner. */
@@ -228,7 +259,19 @@ export interface CreateAppointmentInput {
   startsAt: ISODateTime;
   note?: string;
   couponCode?: string;
+  loyaltyRewardId?: string;
   paymentMethod?: "card" | "at_shop_card" | "cash";
+}
+
+export interface LoyaltyRewardSummary {
+  id: string;
+  amountLimit: number;
+}
+
+export interface LoyaltySummary {
+  starCount: number;
+  accumulatedAmount: number;
+  availableRewards: LoyaltyRewardSummary[];
 }
 
 export interface CouponQuote {
@@ -244,6 +287,7 @@ export interface StaffReview {
   customerId: string;
   rating: number; // 1-5
   comment: string | null;
+  photoUrl: string | null;
   createdAt: ISODateTime;
   customer?: { id: string; firstName: string; maskedSurname: string };
 }

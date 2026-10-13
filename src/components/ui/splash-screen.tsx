@@ -42,7 +42,7 @@ export function SplashScreen() {
     <div
       key={animationKey}
       role={fading ? undefined : "status"}
-      aria-label={fading ? undefined : "HemenTıraş yükleniyor"}
+      aria-label={fading ? undefined : "HairHub yükleniyor"}
       aria-hidden={fading}
       className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#09090b] transition-opacity duration-300 ${
         fading ? "pointer-events-none opacity-0" : "opacity-100"
@@ -58,8 +58,8 @@ export function SplashScreen() {
           <div className="absolute inset-0 m-auto h-28 w-28 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
           <div className="relative z-10 flex h-28 w-28 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md">
             <Image
-              src="/logo.svg"
-              alt="HemenTıraş"
+              src="/hairhub.svg"
+              alt="HairHub"
               width={80}
               height={80}
               priority
@@ -68,7 +68,7 @@ export function SplashScreen() {
           </div>
         </div>
         <h1 className="text-lg font-semibold tracking-tight text-zinc-400">
-          Hemen<span className="text-white">Tıraş</span>
+          Hair<span className="text-white">Hub</span>
         </h1>
       </div>
     </div>

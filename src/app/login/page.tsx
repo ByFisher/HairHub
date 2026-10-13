@@ -15,9 +15,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const passwordResetTimeout = new URLSearchParams(window.location.search).get("passwordReset") === "1"
+      ? window.setTimeout(() => setPasswordResetMessage("Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz."), 0)
+      : undefined;
+
     let active = true;
     currentUser().then((user) => {
       if (active) router.replace(userDestination(user));
@@ -25,7 +30,10 @@ export default function LoginPage() {
       if (!active || (reason instanceof ApiError && reason.status === 401)) return;
       setError(reason instanceof Error ? reason.message : "API bağlantısı kurulamadı.");
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      if (passwordResetTimeout !== undefined) window.clearTimeout(passwordResetTimeout);
+    };
   }, [router]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -51,7 +59,7 @@ export default function LoginPage() {
       <section className="w-full max-w-sm space-y-5 rounded-xl border border-zinc-800 bg-zinc-950 p-6">
         <div className="flex items-center gap-3">
           <BrandLogo size={40} className="rounded-lg" />
-          <div><h1 className="text-base font-semibold">HemenTıraş</h1><p className="text-xs text-zinc-500">Hesabınızla giriş yapın</p></div>
+          <div><h1 className="text-base font-semibold">HairHub</h1><p className="text-xs text-zinc-500">Hesabınızla giriş yapın</p></div>
         </div>
         <form onSubmit={submit}>
           <FormFieldset className="space-y-4">
@@ -61,6 +69,10 @@ export default function LoginPage() {
             <FormField label="Parola" description="Hesap parolanızı girin.">
               <FormInput type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </FormField>
+            <div className="-mt-2 text-right">
+              <Link href="/forgot-password" className="text-xs text-zinc-300 hover:text-white">Şifremi unuttum!</Link>
+            </div>
+            {passwordResetMessage && <p role="status" className="rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-xs text-emerald-200">{passwordResetMessage}</p>}
             {error && <p role="alert" className="rounded-md border border-rose-900 bg-rose-950/30 p-3 text-xs text-rose-300">{error}</p>}
             <button type="submit" disabled={isSubmitting} className="h-10 w-full rounded-md bg-zinc-100 text-sm font-medium text-zinc-950 disabled:opacity-50">
               {isSubmitting ? "Giriş yapılıyor..." : "Giriş yap"}
