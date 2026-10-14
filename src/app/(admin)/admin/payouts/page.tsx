@@ -1,5 +1,5 @@
-import { RoleWorkspacePage } from "@/components/RoleWorkspacePage";
+import { notFound } from "next/navigation";
 
-export default function AdminPayoutsPage() {
-	return <RoleWorkspacePage role="admin" slug="payouts" />;
+export default function AdminPayoutsPage(): never {
+  notFound();
 }

@@ -7,7 +7,6 @@ import {
   ChartNoAxesCombined,
   ClipboardList,
   Clock3,
-  CreditCard,
   FilePlus2,
   Fingerprint,
   GalleryVerticalEnd,
@@ -54,8 +53,6 @@ export const NAVIGATION: Record<PortalRole, PortalNavGroup[]> = {
       { label: "Destek Talepleri", href: "/admin/support-requests", icon: ShieldAlert, allowedRoles: ["super_admin", "admin", "moderator"] },
     ] },
     { label: "Finans & Büyüme", links: [
-      { label: "Finansal Hakedişler", href: "/admin/payouts", icon: BadgePercent, allowedRoles: ["super_admin"] },
-      { label: "IBAN Transfer Durumları", href: "/admin/transfers", icon: CreditCard, allowedRoles: ["super_admin"] },
       { label: "Sponsor & Reklamlar", href: "/admin/sponsors", icon: Megaphone, allowedRoles: ["super_admin", "admin"] },
       { label: "Finans Kayıtları", href: "/admin/financial-logs", icon: ClipboardList, allowedRoles: ["super_admin"] },
     ] },
