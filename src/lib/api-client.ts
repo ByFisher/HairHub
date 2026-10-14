@@ -1,6 +1,7 @@
 import type { ApiErrorBody, Paginated } from "@/types/api";
 
-const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
+  (typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "");
 let csrfRequest: Promise<void> | undefined;
 
 function apiBaseUrl() {
