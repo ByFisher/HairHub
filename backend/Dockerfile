@@ -27,7 +27,8 @@ COPY . .
 COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/start-container.sh /usr/local/bin/start-container
 
-RUN composer dump-autoload --no-dev --no-interaction --optimize \
+RUN touch database/database.sqlite \
+    && composer dump-autoload --no-dev --no-interaction --optimize \
     && chmod +x /usr/local/bin/start-container \
     && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
