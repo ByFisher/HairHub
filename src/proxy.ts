@@ -1,13 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@/types/api";
 
+const API_BASE_URL = (
+  process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_API_URL
+)?.replace(/\/+$/, "");
+
 export async function proxy(request: NextRequest) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || request.nextUrl.origin.replace(/\/+$/, "");
   const cookie = request.headers.get("cookie");
-  if (!apiBaseUrl || !cookie) return NextResponse.next();
+  if (!API_BASE_URL || !cookie) return NextResponse.next();
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/me`, {
       headers: {
         Accept: "application/json",
         Cookie: cookie,

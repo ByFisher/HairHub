@@ -66,3 +66,32 @@ Müşteri kayıt istekleri `city` ve `district` adlarını birlikte gönderir; A
 ## Ziyaretçi erişimi ve müşteri yetkileri
 
 Dükkan arama, dükkan/personel/hizmet detayları, yorumların listelenmesi ve müsait saatlerin okunması herkese açıktır. Randevu oluşturma, listeleme, iptal/değerlendirme ve favorileri listeleme/ekleme/çıkarma `auth:sanctum` oturumu ve `role:customer` middleware'i arkasındadır. Favoriler `shop_favorites` tablosunda müşteri ve dükkan başına tekil kayıt olarak saklanır.
+
+## Render dağıtımı
+
+Render'daki Next.js servisi tek başına Laravel API uçlarını sağlamaz. API için bu repodan ayrı bir Render Web Service oluşturun:
+
+1. Render'da aynı bölgede bir PostgreSQL veritabanı ve bu repoya bağlı bir Web Service oluşturun.
+2. Web Service'te Docker çalışma zamanını seçin, Dockerfile yolunu `backend/Dockerfile`, Docker context yolunu `backend` yapın. Servis `/up` sağlık kontrolünü kullanabilir. Container açılırken migration'lar otomatik çalışır.
+3. Laravel Web Service ortam değişkenlerini ayarlayın:
+
+   ```env
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_KEY=<backend dizininde php artisan key:generate --show ile üretin>
+   APP_URL=https://<laravel-api-render-adresi>
+   DB_CONNECTION=pgsql
+   DB_URL=<Render PostgreSQL internal connection string>
+   FRONTEND_URL=https://hairhub-hv62.onrender.com
+   FRONTEND_URLS=https://hairhub-hv62.onrender.com
+   SANCTUM_STATEFUL_DOMAINS=hairhub-hv62.onrender.com
+   SESSION_DRIVER=database
+   SESSION_SECURE_COOKIE=true
+   LOG_CHANNEL=stderr
+   ```
+
+   `SESSION_DOMAIN` ayarlamayın; oturum çerezleri frontend domaininden aynı-origin Next.js proxy üzerinden taşınır. `APP_KEY` ve veritabanı bağlantısını gizli tutun; Git'e eklemeyin.
+4. Next.js Render servisinde `LARAVEL_API_URL` değişkenini Laravel Web Service URL'sine, `NEXT_PUBLIC_API_URL` değişkenini `https://hairhub-hv62.onrender.com` değerine ayarlayın. Next.js `/api/*` ve `/sanctum/*` isteklerini Laravel servisine iletir; bu, Render'ın farklı alt alan adlarında Sanctum çerezlerinin tarayıcı tarafından engellenmesini önler.
+5. Her iki servisi yeniden deploy edin. Canlı API sağlık kontrolü `https://<laravel-api-render-adresi>/up` adresinde `200` dönmelidir.
+
+Render'ın deneme/ücretsiz veritabanı planlarının süre ve kalıcılık sınırlarını canlı veriye başlamadan önce kontrol edin. Yüklenen görsel ve belgeler container dosya sisteminde tutulur; deploy/restart sonrasında korunmaları gerekiyorsa kalıcı disk veya S3 uyumlu depolama yapılandırın.

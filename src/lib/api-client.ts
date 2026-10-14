@@ -1,7 +1,6 @@
 import type { ApiErrorBody, Paginated } from "@/types/api";
 
-const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  (typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "");
+const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 let csrfRequest: Promise<void> | undefined;
 
 function apiBaseUrl() {
@@ -40,7 +39,7 @@ function buildUrl(path: string, query?: Record<string, string | number | boolean
   const baseUrl = apiBaseUrl();
   if (!baseUrl) {
     throw new ApiError(
-      "API adresi tanımlı değil. .env.local dosyasına NEXT_PUBLIC_API_URL ekleyin.",
+      "NEXT_PUBLIC_API_URL ayarlanmamış. Render frontend servisinin Environment bölümüne Laravel backend adresini ekleyip yeniden deploy edin.",
       0,
     );
   }
@@ -54,6 +53,14 @@ function buildUrl(path: string, query?: Record<string, string | number | boolean
 
 async function toApiError(response: Response): Promise<ApiError> {
   const raw = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("text/html") || /^\s*(?:<!doctype\s+html|<html\b)/i.test(raw)) {
+    return new ApiError(
+      `API adresi HTML sayfası döndürdü (HTTP ${response.status}). NEXT_PUBLIC_API_URL değerinin Laravel backend adresi olduğundan emin olun.`,
+      response.status,
+    );
+  }
+
   let body: ApiErrorBody | null = null;
   try {
     body = raw ? (JSON.parse(raw) as ApiErrorBody) : null;
@@ -82,7 +89,12 @@ function csrfCookie() {
 
 async function ensureCsrfCookie() {
   const baseUrl = apiBaseUrl();
-  if (!baseUrl) throw new ApiError("API adresi tanımlı değil.", 0);
+  if (!baseUrl) {
+    throw new ApiError(
+      "NEXT_PUBLIC_API_URL ayarlanmamış. Render frontend servisinin Environment bölümüne Laravel backend adresini ekleyip yeniden deploy edin.",
+      0,
+    );
+  }
   if (typeof window === "undefined") return;
   if (csrfCookie()) return;
 
