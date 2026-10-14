@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { NAVIGATION, PORTAL_HOME, PORTAL_ROLE_LABEL } from "@/data/portal";
 import { currentUser, logout, userDestination } from "@/lib/auth";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, AUTH_EXPIRED_EVENT } from "@/lib/api-client";
 import type { User } from "@/types/api";
 import type { PortalRole } from "@/types/portal";
 import { BrandLoading, BrandLogo } from "@/components/BrandLogo";
@@ -65,6 +65,12 @@ function PortalShellContent({ children, role }: { children: React.ReactNode; rol
     });
     return () => { active = false; };
   }, [role, router]);
+
+  useEffect(() => {
+    const handleAuthExpired = () => router.replace("/login");
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, [router]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

@@ -1,6 +1,7 @@
 import type { ApiErrorBody, Paginated } from "@/types/api";
 
 const SERVER_API_URL = process.env.LARAVEL_API_URL?.replace(/\/+$/, "");
+export const AUTH_EXPIRED_EVENT = "hairhub:auth-expired";
 let csrfRequest: Promise<void> | undefined;
 
 function apiBaseUrl() {
@@ -77,6 +78,12 @@ function csrfCookie() {
   return value ? decodeURIComponent(value) : "";
 }
 
+function notifyAuthExpired(response: Response) {
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  }
+}
+
 async function ensureCsrfCookie() {
   const baseUrl = apiBaseUrl();
   if (!baseUrl) {
@@ -92,7 +99,10 @@ async function ensureCsrfCookie() {
     credentials: "include",
     headers: { Accept: "application/json" },
   }).then(async (response) => {
-    if (!response.ok) throw await toApiError(response);
+    if (!response.ok) {
+      notifyAuthExpired(response);
+      throw await toApiError(response);
+    }
   }).finally(() => {
     csrfRequest = undefined;
   });
@@ -142,7 +152,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError("Sunucuya ulaşılamıyor. Bağlantınızı kontrol edin.", 0);
   }
 
-  if (!response.ok) throw await toApiError(response);
+  if (!response.ok) {
+    notifyAuthExpired(response);
+    throw await toApiError(response);
+  }
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
