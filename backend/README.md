@@ -69,19 +69,21 @@ Dükkan arama, dükkan/personel/hizmet detayları, yorumların listelenmesi ve m
 
 ## Render dağıtımı
 
-Render'daki Next.js servisi tek başına Laravel API uçlarını sağlamaz. API için bu repodan ayrı bir Render Web Service oluşturun:
+Render'daki Next.js servisi tek başına Laravel API uçlarını sağlamaz. Bu repodaki `render.yaml`, Laravel API servisini ve PostgreSQL veritabanını Render Blueprint olarak tanımlar:
 
-1. Render'da aynı bölgede bir PostgreSQL veritabanı ve bu repoya bağlı bir Web Service oluşturun.
-2. Web Service'te Docker çalışma zamanını seçin, Dockerfile yolunu `backend/Dockerfile`, Docker context yolunu `backend` yapın. Servis `/up` sağlık kontrolünü kullanabilir. Container açılırken migration'lar otomatik çalışır.
-3. Laravel Web Service ortam değişkenlerini ayarlayın:
+1. Render Dashboard'da **New + → Blueprint** seçip bu GitHub deposunu bağlayın. `render.yaml` içindeki ücretsiz `hairhub-api` servisi ve `hairhub-db` PostgreSQL veritabanını oluşturun.
+2. Blueprint kurulumu istediğinde `APP_KEY` için backend dizininde `php artisan key:generate --show` komutuyla üretilen değeri girin. Anahtarı Git'e eklemeyin. Servis `/up` sağlık kontrolü kullanır; container açılırken migration'lar otomatik çalışır.
+3. Blueprint tamamlandıktan sonra `hairhub-api` servisinin Render URL'sini alın ve mevcut Next.js frontend servisinin Environment bölümünde `LARAVEL_API_URL` değerini bu API URL'sine ayarlayın. Bu değişken production build sırasında zorunludur. Ardından frontend'i yeniden deploy edin.
+
+Blueprint, Laravel Web Service için aşağıdaki ortamı ayarlar:
 
    ```env
    APP_ENV=production
    APP_DEBUG=false
-   APP_KEY=<backend dizininde php artisan key:generate --show ile üretin>
-   APP_URL=https://<laravel-api-render-adresi>
+   APP_KEY=<Render Blueprint oluştururken girin>
+   APP_URL=<Render Web Service URL'sinden otomatik alınır>
    DB_CONNECTION=pgsql
-   DB_URL=<Render PostgreSQL internal connection string>
+   DB_URL=<Render PostgreSQL connection string>
    FRONTEND_URL=https://hairhub-hv62.onrender.com
    FRONTEND_URLS=https://hairhub-hv62.onrender.com
    SANCTUM_STATEFUL_DOMAINS=hairhub-hv62.onrender.com
@@ -91,7 +93,7 @@ Render'daki Next.js servisi tek başına Laravel API uçlarını sağlamaz. API 
    ```
 
    `SESSION_DOMAIN` ayarlamayın; oturum çerezleri frontend domaininden aynı-origin Next.js proxy üzerinden taşınır. `APP_KEY` ve veritabanı bağlantısını gizli tutun; Git'e eklemeyin.
-4. Next.js Render servisinde `LARAVEL_API_URL` değişkenini Laravel Web Service URL'sine ayarlayın. `NEXT_PUBLIC_API_URL` gerekmez: tarayıcı istekleri aynı origin'deki Next.js proxy'sine gönderilir ve Next.js `/api/*` ile `/sanctum/*` isteklerini Laravel servisine iletir. Bu, Render'ın farklı alt alan adlarında Sanctum çerezlerinin tarayıcı tarafından engellenmesini önler.
-5. Her iki servisi yeniden deploy edin. Canlı API sağlık kontrolü `https://<laravel-api-render-adresi>/up` adresinde `200` dönmelidir.
+4. `NEXT_PUBLIC_API_URL` gerekmez: tarayıcı istekleri aynı origin'deki Next.js proxy'sine gönderilir; Next.js `/api/*` ve `/sanctum/*` isteklerini `LARAVEL_API_URL` ile Laravel servisine iletir. Bu, Render'ın farklı alt alan adlarında Sanctum çerezlerinin tarayıcı tarafından engellenmesini önler.
+5. Canlı API sağlık kontrolü `https://<laravel-api-render-adresi>/up` adresinde `200` dönmelidir.
 
-Render'ın deneme/ücretsiz veritabanı planlarının süre ve kalıcılık sınırlarını canlı veriye başlamadan önce kontrol edin. Yüklenen görsel ve belgeler container dosya sisteminde tutulur; deploy/restart sonrasında korunmaları gerekiyorsa kalıcı disk veya S3 uyumlu depolama yapılandırın.
+Blueprint ücretsiz plan kullanır; Render'ın ücretsiz veritabanı ve servis planları süre, uyku ve kalıcılık sınırlarına sahiptir. Canlı veriye geçmeden önce bu sınırları kontrol edip uygun ücretli planı seçin. Yüklenen görsel ve belgeler container dosya sisteminde tutulur; deploy/restart sonrasında korunmaları gerekiyorsa kalıcı disk veya S3 uyumlu depolama yapılandırın.
