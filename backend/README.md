@@ -81,7 +81,7 @@ Blueprint, Laravel Web Service için aşağıdaki ortamı ayarlar:
    APP_ENV=production
    APP_DEBUG=false
    APP_KEY=<Render Blueprint oluştururken girin>
-   APP_URL=<Render Web Service URL'sinden otomatik alınır>
+   APP_URL=https://hairhub-api.onrender.com
    DB_CONNECTION=pgsql
    DB_URL=<Render PostgreSQL connection string>
    FRONTEND_URL=https://hairhub-hv62.onrender.com

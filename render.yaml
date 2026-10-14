@@ -16,10 +16,7 @@ services:
       - key: APP_KEY
         sync: false
       - key: APP_URL
-        fromService:
-          type: web
-          name: hairhub-api
-          property: url
+        value: https://hairhub-api.onrender.com
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_URL
