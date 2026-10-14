@@ -1,21 +1,11 @@
 import type { ApiErrorBody, Paginated } from "@/types/api";
 
-const CONFIGURED_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+const SERVER_API_URL = process.env.LARAVEL_API_URL?.replace(/\/+$/, "");
 let csrfRequest: Promise<void> | undefined;
 
 function apiBaseUrl() {
-  if (!CONFIGURED_API_URL) return "";
-  if (typeof window === "undefined") return CONFIGURED_API_URL;
-
-  const apiUrl = new URL(CONFIGURED_API_URL);
-  const appHost = window.location.hostname;
-  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
-
-  if (localHosts.has(appHost) && !localHosts.has(apiUrl.hostname)) {
-    apiUrl.hostname = appHost;
-  }
-
-  return apiUrl.toString().replace(/\/+$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
+  return SERVER_API_URL ?? "";
 }
 
 export class ApiError extends Error {
@@ -39,7 +29,7 @@ function buildUrl(path: string, query?: Record<string, string | number | boolean
   const baseUrl = apiBaseUrl();
   if (!baseUrl) {
     throw new ApiError(
-      "NEXT_PUBLIC_API_URL ayarlanmamış. Render frontend servisinin Environment bölümüne Laravel backend adresini ekleyip yeniden deploy edin.",
+      "Sunucu tarafı API isteği için LARAVEL_API_URL ayarlanmamış.",
       0,
     );
   }
@@ -56,7 +46,7 @@ async function toApiError(response: Response): Promise<ApiError> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("text/html") || /^\s*(?:<!doctype\s+html|<html\b)/i.test(raw)) {
     return new ApiError(
-      `API adresi HTML sayfası döndürdü (HTTP ${response.status}). NEXT_PUBLIC_API_URL değerinin Laravel backend adresi olduğundan emin olun.`,
+      `API yolu HTML sayfası döndürdü (HTTP ${response.status}). Next.js servisindeki LARAVEL_API_URL değerinin Laravel backend adresi olduğundan emin olun.`,
       response.status,
     );
   }
@@ -91,7 +81,7 @@ async function ensureCsrfCookie() {
   const baseUrl = apiBaseUrl();
   if (!baseUrl) {
     throw new ApiError(
-      "NEXT_PUBLIC_API_URL ayarlanmamış. Render frontend servisinin Environment bölümüne Laravel backend adresini ekleyip yeniden deploy edin.",
+      "Sunucu tarafı API isteği için LARAVEL_API_URL ayarlanmamış.",
       0,
     );
   }
@@ -111,7 +101,7 @@ async function ensureCsrfCookie() {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(
-      "Laravel CSRF oturumu başlatılamadı. Laravel API'nin çalıştığını ve NEXT_PUBLIC_API_URL adresinden erişilebildiğini doğrulayın. API çalışıyorsa CORS ve Sanctum stateful domain ayarlarını kontrol edin.",
+      "Laravel CSRF oturumu başlatılamadı. Laravel API'nin çalıştığını ve Next.js servisindeki LARAVEL_API_URL adresinden erişilebildiğini doğrulayın. API çalışıyorsa CORS ve Sanctum stateful domain ayarlarını kontrol edin.",
       0,
     );
   }
@@ -195,4 +185,4 @@ export const put = <T>(path: string, body?: unknown, options?: RequestOptions) =
 };
 export const del = <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" });
 
-export const isApiConfigured = Boolean(CONFIGURED_API_URL);
+export const isApiConfigured = Boolean(SERVER_API_URL);

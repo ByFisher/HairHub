@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@/types/api";
 
-const API_BASE_URL = (
-  process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_API_URL
-)?.replace(/\/+$/, "");
+const API_BASE_URL = process.env.LARAVEL_API_URL?.trim().replace(/\/+$/, "");
 
 export async function proxy(request: NextRequest) {
   const cookie = request.headers.get("cookie");
