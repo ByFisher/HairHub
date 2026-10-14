@@ -10,7 +10,24 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::query()->firstOrCreate(
+        $email = env('ADMIN_BOOTSTRAP_EMAIL');
+        $password = env('ADMIN_BOOTSTRAP_PASSWORD');
+
+        if ($email && $password) {
+            User::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'HairHub Süper Admin',
+                    'password' => Hash::make($password),
+                    'role' => 'super_admin',
+                    'status' => 'active',
+                ],
+            );
+
+            return;
+        }
+
+        User::query()->updateOrCreate(
             ['email' => 'admin@hementiras.com'],
             [
                 'name' => 'HemenTıraş Süper Admin',
