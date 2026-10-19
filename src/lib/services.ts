@@ -70,7 +70,27 @@ export interface SmtpSettingsInput {
   smtp_encryption: string;
 }
 
+export interface SupportPageFaq {
+  question: string;
+  answer: string;
+}
+
+export interface SupportPageContent {
+  title: string;
+  introduction: string;
+  message: string;
+  support_email: string | null;
+  support_phone: string | null;
+  working_hours: string | null;
+  faqs: SupportPageFaq[];
+}
+
 export const adminApi = {
+  supportPage: () => get<{ data: SupportPageContent }>("/admin/support-page"),
+
+  saveSupportPage: (content: SupportPageContent) =>
+    put<{ data: SupportPageContent }>("/admin/support-page", content),
+
   smtpSettings: () => get<{ data: SmtpSettings | null }>("/admin/settings/smtp"),
 
   saveSmtpSettings: (input: SmtpSettingsInput) =>

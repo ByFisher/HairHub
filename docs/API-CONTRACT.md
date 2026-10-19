@@ -31,6 +31,8 @@ php artisan app:user:create --name="Platform Yöneticisi" --email="admin@example
 | GET | `/admin/settings/smtp` | Yalnızca Süper Admin; DB'deki SMTP ayarlarını ve parola var/yok bilgisini döndürür, parolayı döndürmez |
 | POST | `/admin/settings/smtp` | Yalnızca Süper Admin; zorunlu SMTP alanlarını doğrular, tek ayar kaydını günceller ve parolayı Laravel Crypt ile şifreler |
 | POST | `/admin/settings/smtp/test` | Yalnızca Süper Admin; kaydedilmiş SMTP ayarlarıyla `{ email, subject, message }` test e-postası gönderir |
+| GET | `/support-page` | Herkese açık destek sayfası metnini, iletişim bilgilerini ve SSS'leri döndürür |
+| GET / PUT | `/admin/support-page` | Yalnızca Süper Admin; destek sayfası içeriğini görüntüler veya kalıcı olarak günceller |
 
 Şifre sıfırlama e-postasının bağlantısı `FRONTEND_URL` ile oluşturulur. Canlı ortamda bunu
 `https://hairhub.com` gibi frontend origin'ine ayarlayın ve e-postaların gönderilmesi için
@@ -38,6 +40,9 @@ Laravel uygulamasında geçerli `APP_KEY` tanımlı olduğundan emin olun.
 
 SMTP mailer ayarları `/admin/settings` ekranından veritabanında yönetilir. E-posta gönderimleri
 env SMTP ayarlarına geri dönmez; panelde ayarlar kaydedilene kadar mail gönderimi engellenir.
+Destek sayfası `/support` adresinde yayınlanır; Süper Admin içeriği yönetim panelindeki
+**Destek Sayfası** bölümünden düzenler. Başlık, açıklama, iletişim bilgileri ve en fazla 20 SSS
+Laravel veritabanında saklanır; metinler HTML olarak çalıştırılmaz.
 
 Müşteri kaydı otomatik oturum açar ve `/shops` sayfasına gider. Dükkan sahibi başvurusu için ana sayfadaki form kullanılır; başvuru `/approval-pending` ekranına yönlenir. Süper Admin `/admin/pending-shops` kuyruğundan dükkanı aktif ettiğinde dükkan sahibi `status=approved` olur ve sonraki girişinde `/shop/dashboard` sayfasına yönlendirilir. Bekleyen sahipler `/shop/*` API uçlarına erişemez.
 

@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\ShopAppointmentController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\SliderController;
 use App\Http\Controllers\Api\SmtpSettingController;
+use App\Http\Controllers\Api\SupportPageController;
 use App\Http\Controllers\Api\SponsorApprovalController;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/locations/districts', [PublicShopController::class, 'districts']);
     Route::get('/shops/meta/cities', [PublicShopController::class, 'cities']);
     Route::get('/shops/meta/services', [PublicShopController::class, 'distinctServices']);
+    Route::get('/support-page', [SupportPageController::class, 'show']);
     Route::get('/sliders', [SliderController::class, 'publicIndex']);
     Route::get('/shops', [PublicShopController::class, 'index']);
     Route::get('/shops/slug/{slug}', [PublicShopController::class, 'showBySlug']);
@@ -96,6 +98,8 @@ Route::prefix('v1')->group(function (): void {
             );
 
             Route::middleware('role:super_admin')->group(function (): void {
+                Route::get('/support-page', [SupportPageController::class, 'show']);
+                Route::put('/support-page', [SupportPageController::class, 'update']);
                 Route::get('/settings/smtp', [SmtpSettingController::class, 'show']);
                 Route::post('/settings/smtp', [SmtpSettingController::class, 'update']);
                 Route::post('/settings/smtp/test', [SmtpSettingController::class, 'test'])->middleware('throttle:5,1');

@@ -10,6 +10,7 @@ import {
   FilePlus2,
   Fingerprint,
   GalleryVerticalEnd,
+  HelpCircle,
   LayoutDashboard,
   MapPin,
   Megaphone,
@@ -51,6 +52,7 @@ export const NAVIGATION: Record<PortalRole, PortalNavGroup[]> = {
       { label: "Kupon Yönetimi", href: "/admin/coupons", icon: BadgePercent, allowedRoles: ["super_admin"] },
       { label: "Sponsor Onay Kuyruğu", href: "/admin/sponsor-approvals", icon: Megaphone, allowedRoles: ["super_admin", "admin"] },
       { label: "Destek Talepleri", href: "/admin/support-requests", icon: ShieldAlert, allowedRoles: ["super_admin", "admin", "moderator"] },
+      { label: "Destek Sayfası", href: "/admin/support-page", icon: HelpCircle, allowedRoles: ["super_admin"] },
     ] },
     { label: "Finans & Büyüme", links: [
       { label: "Sponsor & Reklamlar", href: "/admin/sponsors", icon: Megaphone, allowedRoles: ["super_admin", "admin"] },

@@ -9,6 +9,7 @@ import { AccessLogsPanel } from "@/components/admin/AccessLogsPanel";
 import { CouponManager } from "@/components/admin/CouponManager";
 import { FinancialLogsPanel } from "@/components/admin/FinancialLogsPanel";
 import { AdminSmtpSettings } from "@/components/admin/AdminSmtpSettings";
+import { AdminSupportPageManager } from "@/components/admin/AdminSupportPageManager";
 import { AdminReviewQueue, AdminSupportQueue } from "@/components/admin/AdminModerationQueues";
 import { ShopAppointmentsPanel } from "@/components/ShopAppointmentsPanel";
 import { ShopLiveModulesPanel } from "@/components/ShopLiveModulesPanel";
@@ -48,6 +49,7 @@ export function RoleWorkspacePage({ role, slug }: { role: PortalRole; slug: stri
   if (role === "admin" && slug === "legal-logs") livePanel = <AccessLogsPanel />;
   if (role === "admin" && slug === "audit-logs") livePanel = <AdminAuditLogsPanel />;
   if (role === "admin" && slug === "settings") livePanel = <AdminSmtpSettings />;
+  if (role === "admin" && slug === "support-page") livePanel = <AdminSupportPageManager />;
   if (role === "admin" && slug === "review-moderation") livePanel = <AdminReviewQueue />;
   if (role === "admin" && slug === "support-requests") livePanel = <AdminSupportQueue />;
   if (role === "shop" && slug === "customers") livePanel = <ShopCustomersPanel />;
