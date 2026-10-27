@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\PaymentGateway;
 use App\Exceptions\SmtpSettingsNotConfigured;
+use App\Mail\ResendApiTransport;
 use App\Services\Payments\DemoPaymentGateway;
 use App\Services\Payments\IyzicoPaymentGateway;
 use App\Services\SmtpSettingsService;
@@ -37,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Mail::extend('resend_api', static fn (array $config): ResendApiTransport => new ResendApiTransport(
+            (string) ($config['key'] ?? ''),
+        ));
+
         if (Schema::hasTable('smtp_settings')) {
             try {
                 app(SmtpSettingsService::class)->configure();

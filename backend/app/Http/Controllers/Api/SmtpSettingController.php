@@ -30,30 +30,43 @@ class SmtpSettingController extends Controller
     public function update(Request $request, SmtpSettingsService $smtp): JsonResponse
     {
         $existingSetting = $smtp->current();
+        $mailer = $request->input('smtp_mailer');
+        $isSmtp = $mailer === 'smtp';
+        $configuredPassword = $isSmtp
+            ? config('mail.mailers.smtp.password')
+            : config('services.resend.key');
         $canReusePassword = filled($existingSetting?->smtp_password)
-            || filled(config('mail.mailers.smtp.password'));
+            || filled($configuredPassword);
 
         $data = $request->validate([
             'sender_name' => ['required', 'string', 'max:120'],
             'sender_email' => ['required', 'string', 'email', 'max:255'],
-            'smtp_mailer' => ['required', Rule::in(['smtp'])],
-            'smtp_host' => ['required', 'string', 'max:255'],
-            'smtp_port' => ['required', 'integer', 'between:1,65535'],
-            'smtp_username' => ['required', 'string', 'max:255'],
+            'smtp_mailer' => ['required', Rule::in(['smtp', 'resend'])],
+            'smtp_host' => [$isSmtp ? 'required' : 'nullable', 'string', 'max:255'],
+            'smtp_port' => [$isSmtp ? 'required' : 'nullable', 'integer', 'between:1,65535'],
+            'smtp_username' => [$isSmtp ? 'required' : 'nullable', 'string', 'max:255'],
             'smtp_password' => [$canReusePassword ? 'nullable' : 'required', 'string', 'max:4096'],
-            'smtp_encryption' => ['required', Rule::in(['tls', 'ssl', 'none'])],
+            'smtp_encryption' => [$isSmtp ? 'required' : 'nullable', Rule::in(['tls', 'ssl', 'none'])],
         ]);
 
-        $setting = DB::transaction(function () use ($data, $existingSetting): SmtpSetting {
+        $setting = DB::transaction(function () use ($data, $existingSetting, $isSmtp, $configuredPassword): SmtpSetting {
             $password = filled($data['smtp_password'] ?? null)
                 ? Crypt::encryptString($data['smtp_password'])
                 : ($existingSetting?->smtp_password
-                    ?? Crypt::encryptString((string) config('mail.mailers.smtp.password')));
+                    ?? Crypt::encryptString((string) $configuredPassword));
+            $attributes = $data;
+
+            if (! $isSmtp) {
+                $attributes['smtp_host'] = null;
+                $attributes['smtp_port'] = null;
+                $attributes['smtp_username'] = null;
+                $attributes['smtp_encryption'] = null;
+            }
 
             return SmtpSetting::query()->updateOrCreate(
                 ['id' => 1],
                 [
-                    ...$data,
+                    ...$attributes,
                     'smtp_password' => $password,
                 ],
             );
@@ -81,7 +94,7 @@ class SmtpSettingController extends Controller
 
         try {
             $smtp->configure($setting);
-            Mail::mailer('smtp')->html(
+            Mail::mailer($setting->smtp_mailer)->html(
                 nl2br(e($data['message'])),
                 function ($mail) use ($data): void {
                     $mail->to($data['email'])->subject($data['subject']);
@@ -93,7 +106,7 @@ class SmtpSettingController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Test e-postası gönderilemedi. SMTP bağlantı bilgilerini kontrol edin.',
+                'message' => 'Test e-postası gönderilemedi. E-posta sağlayıcısı ayarlarını kontrol edin.',
             ], 502);
         }
 
@@ -124,6 +137,26 @@ class SmtpSettingController extends Controller
      */
     private function presentEnvironmentSettings(): ?array
     {
+        if (config('mail.default') === 'resend' && filled(config('services.resend.key'))) {
+            $senderEmail = config('mail.from.address');
+            $senderName = config('mail.from.name');
+
+            if (filled($senderEmail) && filled($senderName)) {
+                return [
+                    'sender_name' => $senderName,
+                    'sender_email' => $senderEmail,
+                    'smtp_mailer' => 'resend',
+                    'smtp_host' => null,
+                    'smtp_port' => null,
+                    'smtp_username' => null,
+                    'smtp_password' => null,
+                    'has_password' => true,
+                    'smtp_encryption' => null,
+                    'source' => 'environment',
+                ];
+            }
+        }
+
         $mailer = config('mail.mailers.smtp', []);
         $port = $mailer['port'] ?? null;
         $scheme = $mailer['scheme'] ?? null;

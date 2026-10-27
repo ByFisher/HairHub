@@ -49,12 +49,12 @@ export const ADMIN_ENTITY_PATH: Record<EntityType, string> = {
 export interface SmtpSettings {
   sender_name: string;
   sender_email: string;
-  smtp_mailer: string;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_username: string;
+  smtp_mailer: "smtp" | "resend";
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
   smtp_password: null;
-  smtp_encryption: "tls" | "ssl" | "none";
+  smtp_encryption: "tls" | "ssl" | "none" | null;
   has_password: boolean;
   source: "database" | "environment";
 }
@@ -62,12 +62,12 @@ export interface SmtpSettings {
 export interface SmtpSettingsInput {
   sender_name: string;
   sender_email: string;
-  smtp_mailer: string;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_username: string;
+  smtp_mailer: "smtp" | "resend";
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
   smtp_password: string;
-  smtp_encryption: string;
+  smtp_encryption: "tls" | "ssl" | "none" | null;
 }
 
 export interface SupportPageFaq {

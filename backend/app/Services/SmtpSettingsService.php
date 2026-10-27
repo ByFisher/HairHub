@@ -23,40 +23,56 @@ class SmtpSettingsService
             || ! $setting->sender_name
             || ! $setting->sender_email
             || ! $setting->smtp_mailer
-            || ! $setting->smtp_host
-            || ! $setting->smtp_port
-            || ! $setting->smtp_username
             || ! $setting->smtp_password
-            || ! $setting->smtp_encryption
         ) {
             throw new SmtpSettingsNotConfigured;
         }
 
-        $scheme = match ($setting->smtp_encryption) {
-            'tls' => 'smtp',
-            'ssl' => 'smtps',
-            'none' => 'smtp',
-            default => throw new SmtpSettingsNotConfigured,
-        };
+        $password = $setting->decryptedPassword();
 
-        Config::set([
-            'mail.default' => $setting->smtp_mailer,
-            'mail.mailers.smtp' => [
+        if ($setting->smtp_mailer === 'smtp') {
+            if (! $setting->smtp_host || ! $setting->smtp_port || ! $setting->smtp_username) {
+                throw new SmtpSettingsNotConfigured;
+            }
+
+            $scheme = match ($setting->smtp_encryption) {
+                'tls' => 'smtp',
+                'ssl' => 'smtps',
+                'none' => 'smtp',
+                default => throw new SmtpSettingsNotConfigured,
+            };
+
+            Config::set('mail.mailers.smtp', [
                 ...config('mail.mailers.smtp', []),
-                'transport' => $setting->smtp_mailer,
+                'transport' => 'smtp',
                 'scheme' => $scheme,
                 'url' => null,
                 'host' => $setting->smtp_host,
                 'port' => $setting->smtp_port,
                 'username' => $setting->smtp_username,
-                'password' => $setting->decryptedPassword(),
-            ],
+                'password' => $password,
+            ]);
+        } elseif ($setting->smtp_mailer === 'resend') {
+            Config::set([
+                'services.resend.key' => $password,
+                'mail.mailers.resend' => [
+                    'transport' => 'resend_api',
+                    'key' => $password,
+                ],
+            ]);
+        } else {
+            throw new SmtpSettingsNotConfigured;
+        }
+
+        Config::set([
+            'mail.default' => $setting->smtp_mailer,
             'mail.from.address' => $setting->sender_email,
             'mail.from.name' => $setting->sender_name,
         ]);
 
         if ($purgeMailer) {
             Mail::purge('smtp');
+            Mail::purge('resend');
         }
 
         return $setting;

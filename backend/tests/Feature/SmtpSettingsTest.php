@@ -10,8 +10,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mime\Email;
 use Tests\TestCase;
 
@@ -129,6 +131,38 @@ class SmtpSettingsTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_save_resend_api_settings_with_an_encrypted_api_key(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => 'super_admin',
+            'status' => 'active',
+        ]);
+        $payload = [
+            ...$this->validPayload(),
+            'smtp_mailer' => 'resend',
+            'smtp_host' => null,
+            'smtp_port' => null,
+            'smtp_username' => null,
+            'smtp_encryption' => null,
+            'smtp_password' => 're_test_secret',
+        ];
+
+        $this->actingAs($superAdmin)
+            ->postJson('/api/v1/admin/settings/smtp', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.smtp_mailer', 'resend')
+            ->assertJsonPath('data.smtp_host', null)
+            ->assertJsonPath('data.smtp_port', null)
+            ->assertJsonPath('data.has_password', true)
+            ->assertJsonPath('data.smtp_password', null)
+            ->assertDontSee('re_test_secret');
+
+        $setting = SmtpSetting::query()->findOrFail(1);
+        $this->assertSame('re_test_secret', $setting->decryptedPassword());
+        $this->assertNull($setting->smtp_host);
+        $this->assertNull($setting->smtp_port);
+    }
+
     public function test_only_super_admins_can_read_or_change_smtp_settings(): void
     {
         $admin = User::factory()->create([
@@ -218,7 +252,71 @@ class SmtpSettingsTest extends TestCase
                 'message' => 'Hello from the test.',
             ])
             ->assertStatus(502)
-            ->assertJsonPath('message', 'Test e-postası gönderilemedi. SMTP bağlantı bilgilerini kontrol edin.');
+            ->assertJsonPath('message', 'Test e-postası gönderilemedi. E-posta sağlayıcısı ayarlarını kontrol edin.');
+    }
+
+    public function test_resend_test_email_uses_the_https_api_transport(): void
+    {
+        Http::fake([
+            'https://api.resend.com/emails' => Http::response(['id' => 'email_test_123'], 200),
+        ]);
+        $superAdmin = User::factory()->create([
+            'role' => 'super_admin',
+            'status' => 'active',
+        ]);
+        SmtpSetting::query()->create([
+            'sender_name' => 'HairHub Test',
+            'sender_email' => 'onboarding@resend.dev',
+            'smtp_mailer' => 'resend',
+            'smtp_password' => Crypt::encryptString('re_test_secret'),
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->postJson('/api/v1/admin/settings/smtp/test', [
+                'email' => 'recipient@example.test',
+                'subject' => 'Resend API test',
+                'message' => 'Hello from the test.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Test e-postası gönderildi.');
+
+        $request = Http::recorded()->first()[0];
+        $this->assertSame('https://api.resend.com/emails', $request->url());
+        $this->assertTrue($request->hasHeader('Authorization', 'Bearer re_test_secret'));
+        $this->assertSame('"HairHub Test" <onboarding@resend.dev>', $request['from']);
+        $this->assertSame(['recipient@example.test'], $request['to']);
+        $this->assertSame('Resend API test', $request['subject']);
+        $this->assertStringContainsString('Hello from the test.', $request['html']);
+    }
+
+    public function test_resend_api_failures_are_reported_as_gateway_errors(): void
+    {
+        Http::fake([
+            'https://api.resend.com/emails' => Http::response(['message' => 'Invalid API key'], 401),
+        ]);
+        $superAdmin = User::factory()->create([
+            'role' => 'super_admin',
+            'status' => 'active',
+        ]);
+        SmtpSetting::query()->create([
+            'sender_name' => 'HairHub Test',
+            'sender_email' => 'onboarding@resend.dev',
+            'smtp_mailer' => 'resend',
+            'smtp_password' => Crypt::encryptString('re_test_secret'),
+        ]);
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(fn (string $message, array $context): bool => $message === 'SMTP test email delivery failed.'
+                && $context['exception'] instanceof TransportExceptionInterface);
+
+        $this->actingAs($superAdmin)
+            ->postJson('/api/v1/admin/settings/smtp/test', [
+                'email' => 'recipient@example.test',
+                'subject' => 'Resend API test',
+                'message' => 'Hello from the test.',
+            ])
+            ->assertStatus(502)
+            ->assertJsonPath('message', 'Test e-postası gönderilemedi. E-posta sağlayıcısı ayarlarını kontrol edin.');
     }
 
     public function test_message_sending_refreshes_a_resolved_mailer_from_database_settings(): void
